@@ -5,7 +5,6 @@ import {
 } from 'material-react-table';
 
 const PersonTable = ({ people, type, onSelect, selectedPerson, calculateDetailedOverlap }) => {
-  console.log('people', people)
   const data = useMemo(() => people.map((row) => ({
     ...row,
     liveScan: row.liveScan ? 'Yes' : 'No',
