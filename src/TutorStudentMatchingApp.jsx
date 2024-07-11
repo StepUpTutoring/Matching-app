@@ -7,8 +7,14 @@ import FilterControls from './components/FilterControls';
 import RecommendedMatches from './components/RecommendedMatches';
 import { calculateDetailedOverlap, calculateMatrixValue } from './utils/matchingUtils';
 import { fetchTutors, fetchStudents, subscribeTutors, subscribeStudents, createMatch } from './services/firebase';
+import { useAuth } from './hooks/useAuth';
+import { Navigate } from 'react-router-dom';
 
 const TutorStudentMatchingApp = () => {
+  const { user } = useAuth()
+  if (!user) {
+    return <Navigate to="/login" />
+  }
   const [MIN_OVERLAP_THRESHOLD, setMIN_OVERLAP_THRESHOLD] = useState(2);
   const [waitingTimeWeight, setWaitingTimeWeight] = useState(0.2);
   const [unmatchedStudents, setUnmatchedStudents] = useState([]);
