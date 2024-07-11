@@ -9,7 +9,7 @@ const PersonTable = ({ people, type, onSelect, selectedPerson, calculateDetailed
   const data = useMemo(() => people.map((row) => ({
     ...row,
     liveScan: row.liveScan ? 'Yes' : 'No',
-    waitingDays: `${row.waitingDays} days waiting`,
+    waitingDays: `${row.waitingDays || ''} days waiting`,
   })), [people]);
   const columns = useMemo(
     () => [
@@ -19,10 +19,10 @@ const PersonTable = ({ people, type, onSelect, selectedPerson, calculateDetailed
         size: 150,
         Cell: ({ row }) => (
           <button 
-            onClick={(e) => onSelect(selectedPerson?.id === row.id ? row.original : null, type)}
-            className={`px-2 py-1 ${selectedPerson?.id === row.id ? 'bg-teal-800' : 'bg-teal-600'} text-white rounded hover:bg-teal-700 transition-colors`}
+            onClick={(e) => onSelect(selectedPerson?.id === row.original.id ? row.original : null, type)}
+            className={`px-2 py-1 ${selectedPerson?.id === row.original.id ? 'bg-teal-800' : 'bg-teal-600'} text-white rounded hover:bg-teal-700 transition-colors`}
           >
-            {selectedPerson?.id === row.id ? 'Deselect' : 'Select'}
+            {selectedPerson?.id === row.original.id ? 'Deselect' : 'Select'}
           </button>
         ),
       },
@@ -43,7 +43,7 @@ const PersonTable = ({ people, type, onSelect, selectedPerson, calculateDetailed
           ).join(', ') : '';
           return (
             <>
-              <div>{row.availability?.join(', ')}</div>
+              <div>{row.original.availability?.join(', ')}</div>
               {!isSelected ? null : <div>
                 <div className={`text-xs font-bold mt-1`}>{`OVERLAP: ${overlappingDays} days, ${totalOverlapHours.toFixed(1)} hours`}</div>
                 <div className={`text-xs text-teal-600 mt-1`}>{`${overlapDetails}`}</div>
