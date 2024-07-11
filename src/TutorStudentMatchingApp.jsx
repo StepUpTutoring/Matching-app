@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { maxWeightAssign } from 'munkres-algorithm';
+import { Navigate } from 'react-router-dom';
 import PersonTable from './components/PersonTable';
 import MatchesTable from './components/MatchesTable';
 import DetailsBar from './components/DetailsBar';
@@ -8,7 +9,6 @@ import RecommendedMatches from './components/RecommendedMatches';
 import { calculateDetailedOverlap, calculateMatrixValue } from './utils/matchingUtils';
 import { fetchTutors, fetchStudents, subscribeTutors, subscribeStudents, createMatch } from './services/firebase';
 import { useAuth } from './hooks/useAuth';
-import { Navigate } from 'react-router-dom';
 
 const TutorStudentMatchingApp = () => {
   const { user } = useAuth()
