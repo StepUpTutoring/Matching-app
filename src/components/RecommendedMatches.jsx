@@ -1,5 +1,3 @@
-// src/components/RecommendedMatches.js
-
 import React, { useState, useEffect } from 'react';
 import PersonTable from './PersonTable';
 import { calculateDetailedOverlap, calculateMatrixValue } from '../utils/matchingUtils';
@@ -16,7 +14,7 @@ const RecommendedMatches = ({
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    if (selectedPerson && otherPersons.length > 0) {
+    if (selectedPerson && otherPersons && otherPersons.length > 0) {
       calculateRecommendedMatches();
     } else {
       setRecommendedMatches([]);
@@ -24,8 +22,9 @@ const RecommendedMatches = ({
   }, [selectedPerson, otherPersons, waitingTimeWeight, MIN_OVERLAP_THRESHOLD]);
 
   const calculateRecommendedMatches = () => {
-    console.log('Calculating recommended matches for:', selectedPerson.name, 'Type:', type);
+    console.log('Calculating recommended matches for:', selectedPerson?.name, 'Type:', type);
     const sorted = otherPersons
+      .filter(other => other != null)
       .map(other => {
         const { overlappingDays, totalOverlapHours } = calculateDetailedOverlap(selectedPerson, other);
         return {

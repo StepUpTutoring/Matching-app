@@ -96,3 +96,23 @@ export const createMatch = async (matchData) => {
         throw error;
     }
 };
+
+
+export async function loginWithGoogle() {
+  try {
+      const provider = new GoogleAuthProvider()
+
+      const { user } = await signInWithPopup(auth, provider)
+
+      return { uid: user.uid, displayName: user.displayName }
+  } catch (error) {
+      if (error.code !== 'auth/cancelled-popup-request') {
+      console.error(error)
+      }
+      return null
+  }
+}
+
+export async function logout() {
+  await auth.signOut()
+}

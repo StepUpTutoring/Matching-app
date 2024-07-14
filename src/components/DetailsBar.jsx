@@ -22,7 +22,7 @@ const DetailsBar = ({ student, tutor, onClose, handleManualMatch, calculateDetai
         <tbody>
           <tr>
             <td className="px-3 py-2 text-sm font-medium text-gray-900">{person.name}</td>
-            <td className="px-3 py-2 text-sm text-gray-500 break-words">{person.availability.join(', ')}</td>
+            <td className="px-3 py-2 text-sm text-gray-500 break-words">{person.availability?.join(', ')}</td>
             <td className="px-3 py-2 text-sm text-gray-500">{person.language}</td>
             <td className="px-3 py-2 text-sm text-gray-500">{person.liveScan ? 'Yes' : 'No'}</td>
           </tr>

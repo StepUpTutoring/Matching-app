@@ -1,9 +1,14 @@
 export const calculateDetailedOverlap = (person1, person2) => {
+  if (!person1 || !person2 || !person1.availability || !person2.availability) {
+    return { overlappingSlots: [], totalOverlapHours: 0, overlappingDays: 0 };
+  }
+
   const overlappingSlots = [];
   let totalOverlapHours = 0;
   const overlappingDays = new Set();
 
   const parseTime = (time) => {
+    if (!time) return 0;
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
   };
@@ -15,11 +20,15 @@ export const calculateDetailedOverlap = (person1, person2) => {
   };
 
   person1.availability.forEach(slot1 => {
+    if (!slot1) return;
     const [day1, timeRange1] = slot1.split(' ');
+    if (!timeRange1) return;
     const [start1, end1] = timeRange1.split('-').map(parseTime);
 
     person2.availability.forEach(slot2 => {
+      if (!slot2) return;
       const [day2, timeRange2] = slot2.split(' ');
+      if (!timeRange2) return;
       const [start2, end2] = timeRange2.split('-').map(parseTime);
 
       if (day1 === day2) {
@@ -49,13 +58,15 @@ export const calculateDetailedOverlap = (person1, person2) => {
 };
 
 export const calculateMatrixValue = (person1, person2, waitingTimeWeight) => {
+  if (!person1 || !person2) return 0;
+
   const { overlappingDays, totalOverlapHours } = calculateDetailedOverlap(person1, person2);
   const remainingWeight = 1 - waitingTimeWeight;
   const daysScore = overlappingDays * (remainingWeight / 2);
   const hoursScore = (totalOverlapHours / 5) * (remainingWeight / 2);
   
   const maxWaitingDays = 30; // Assume 30 days is the maximum waiting time
-  const waitingScore = ((person1.waitingDays + person2.waitingDays) / (2 * maxWaitingDays)) * waitingTimeWeight;
+  const waitingScore = ((person1.waitingDays || 0) + (person2.waitingDays || 0)) / (2 * maxWaitingDays) * waitingTimeWeight;
   
   return daysScore + hoursScore + waitingScore;
 };

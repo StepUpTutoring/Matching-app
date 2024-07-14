@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from './hooks/useAuth'
 import { maxWeightAssign } from 'munkres-algorithm';
+import { Navigate } from 'react-router-dom';
 import PersonTable from './components/PersonTable';
 import MatchesTable from './components/MatchesTable';
 import DetailsBar from './components/DetailsBar';
@@ -8,7 +10,13 @@ import RecommendedMatches from './components/RecommendedMatches';
 import { calculateDetailedOverlap, calculateMatrixValue } from './utils/matchingUtils';
 import { fetchTutors, fetchStudents, subscribeTutors, subscribeStudents, createMatch } from './services/firebase';
 
+
+
 const TutorStudentMatchingApp = () => {
+  const { user } = useAuth()
+  if (!user) {
+    return <Navigate to="/login" />
+  }
   const [MIN_OVERLAP_THRESHOLD, setMIN_OVERLAP_THRESHOLD] = useState(2);
   const [waitingTimeWeight, setWaitingTimeWeight] = useState(0.2);
   const [unmatchedStudents, setUnmatchedStudents] = useState([]);
@@ -105,6 +113,7 @@ const TutorStudentMatchingApp = () => {
     try {
       const costMatrix = unmatchedStudents.map(student => 
         unmatchedTutors.map(tutor => {
+          if (!student || !tutor) return -Infinity;
           if ((filters.language && student.language !== tutor.language) ||
               (filters.liveScan && student.liveScan !== tutor.liveScan)) {
             return -Infinity;
@@ -123,6 +132,10 @@ const TutorStudentMatchingApp = () => {
         if (tutorIndex !== null) {
           const student = unmatchedStudents[studentIndex];
           const tutor = unmatchedTutors[tutorIndex];
+          if (!student || !tutor) {
+            addLog(`Invalid match: student or tutor is undefined`);
+            return;
+          }
           const { overlappingDays, totalOverlapHours } = calculateDetailedOverlap(student, tutor);
           if (overlappingDays >= MIN_OVERLAP_THRESHOLD &&
               (!filters.language || student.language === tutor.language) &&
@@ -132,7 +145,7 @@ const TutorStudentMatchingApp = () => {
             addLog(`Insufficient overlap or filter mismatch for student ${student.name} and tutor ${tutor.name}`);
           }
         } else {
-          addLog(`No match found for student ${unmatchedStudents[studentIndex].name}`);
+          addLog(`No match found for student ${unmatchedStudents[studentIndex]?.name || 'Unknown'}`);
         }
       });
 
