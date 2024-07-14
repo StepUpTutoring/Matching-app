@@ -29,7 +29,7 @@ const PersonTable = ({ people, type, onSelect, selectedPerson, calculateDetailed
   const columns = useMemo(() => {
     if (data.length === 0) return [];
     
-    const priorityFields = ['name', 'availability', 'language', 'liveScan'];
+    const priorityFields = ['name', 'availability', 'language', 'liveScan', 'waitingDays'];
     const allKeys = Object.keys(data[0]);
     
     const createColumn = (key) => ({
