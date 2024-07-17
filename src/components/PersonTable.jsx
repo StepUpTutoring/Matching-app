@@ -103,7 +103,7 @@ const PersonTable = ({ people, type, onSelect, selectedPerson, calculateDetailed
     enablePagination: true,
     enableSorting: true,
     muiTablePaginationProps: {
-      rowsPerPageOptions: [10, 20, 50, 100],
+      rowsPerPageOptions: [50, 100],
     },
   });
 
