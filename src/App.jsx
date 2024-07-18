@@ -8,8 +8,6 @@ import Login from "./Login.jsx";
 function App() {
   const location = useLocation()
 
-  console.log('Current path:', location.pathname)
-
   return (
     <AuthProvider>
       <div>
