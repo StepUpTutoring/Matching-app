@@ -36,10 +36,10 @@ export const fetchTutors = async () => {
     try {
         const tutorsQuery = query(collection(db, 'tutors'));
         const querySnapshot = await getDocs(tutorsQuery);
-        console.log(querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        })))
+        // console.log(querySnapshot.docs.map(doc => ({
+        //     id: doc.id,
+        //     ...doc.data()
+        // })))
         return querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -55,10 +55,10 @@ export const fetchStudents = async () => {
     try {
         const studentsQuery = query(collection(db, 'students'));
         const querySnapshot = await getDocs(studentsQuery);
-        console.log(querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        })))
+        // console.log(querySnapshot.docs.map(doc => ({
+        //     id: doc.id,
+        //     ...doc.data()
+        // })))
         return querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -71,7 +71,7 @@ export const fetchStudents = async () => {
 
 // Function to listen for real-time updates to tutors
 export const subscribeTutors = (callback) => {
-    const tutorsQuery = query(collection(db, 'people'), where('role', '==', 'tutor'));
+    const tutorsQuery = query(collection(db, 'tutors'));
     return onSnapshot(tutorsQuery, (querySnapshot) => {
         const tutors = querySnapshot.docs.map(doc => ({
             id: doc.id,
@@ -83,7 +83,7 @@ export const subscribeTutors = (callback) => {
 
 // Function to listen for real-time updates to students
 export const subscribeStudents = (callback) => {
-    const studentsQuery = query(collection(db, 'people'), where('role', '==', 'student'));
+    const studentsQuery = query(collection(db, 'students'));
     return onSnapshot(studentsQuery, (querySnapshot) => {
         const students = querySnapshot.docs.map(doc => ({
             id: doc.id,

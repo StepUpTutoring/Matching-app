@@ -54,7 +54,7 @@ const TutorStudentMatchingApp = () => {
         ]);
         setUnmatchedTutors(fetchedTutors);
         setUnmatchedStudents(fetchedStudents);
-        addLog("Data fetched successfully", fetchedTutors, fetchedStudents);
+        addLog("Data fetched successfully");
       } catch (error) {
         addLog(`Error fetching data: ${error.message}`);
       } finally {
