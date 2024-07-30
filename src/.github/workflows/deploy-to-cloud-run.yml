@@ -13,23 +13,25 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '18'  # Using Node.js version 18
+        node-version: '18'
 
     - name: Install dependencies
-      run: npm ci  # This uses the package-lock.json for a clean install
+      run: npm ci
 
     - name: Build React app
       run: npm run build
       env:
-        # These secrets should be set in your GitHub repository
         VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
         VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
         VITE_PROJECT_ID: ${{ secrets.VITE_PROJECT_ID }}
@@ -38,11 +40,15 @@ jobs:
         VITE_APP_ID: ${{ secrets.VITE_APP_ID }}
         VITE_MEASUREMENT_ID: ${{ secrets.VITE_MEASUREMENT_ID }}
 
-    - name: Setup Google Cloud CLI
-      uses: google-github-actions/setup-gcloud@v1
+    - name: Google Auth
+      id: auth
+      uses: 'google-github-actions/auth@v2'
       with:
-        service_account_key: ${{ secrets.GCP_SA_KEY }}
-        project_id: ${{ env.PROJECT_ID }}
+        workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
+        service_account: '${{ secrets.WIF_SERVICE_ACCOUNT }}'
+
+    - name: Setup Google Cloud CLI
+      uses: 'google-github-actions/setup-gcloud@v2'
 
     - name: Authorize Docker push
       run: gcloud auth configure-docker
