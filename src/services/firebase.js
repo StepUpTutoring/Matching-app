@@ -34,8 +34,12 @@ const functions = getFunctions(app)
 // Function to fetch all tutors
 export const fetchTutors = async () => {
     try {
-        const tutorsQuery = query(collection(db, 'people'), where('role', '==', 'tutor'));
+        const tutorsQuery = query(collection(db, 'tutors'));
         const querySnapshot = await getDocs(tutorsQuery);
+        console.log(querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })))
         return querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -49,8 +53,12 @@ export const fetchTutors = async () => {
 // Function to fetch all students
 export const fetchStudents = async () => {
     try {
-        const studentsQuery = query(collection(db, 'people'), where('role', '==', 'student'));
+        const studentsQuery = query(collection(db, 'students'));
         const querySnapshot = await getDocs(studentsQuery);
+        console.log(querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })))
         return querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -99,20 +107,20 @@ export const createMatch = async (matchData) => {
 
 
 export async function loginWithGoogle() {
-  try {
-      const provider = new GoogleAuthProvider()
+    try {
+        const provider = new GoogleAuthProvider()
 
-      const { user } = await signInWithPopup(auth, provider)
+        const { user } = await signInWithPopup(auth, provider)
 
-      return { uid: user.uid, displayName: user.displayName }
-  } catch (error) {
-      if (error.code !== 'auth/cancelled-popup-request') {
-      console.error(error)
-      }
-      return null
-  }
+        return { uid: user.uid, displayName: user.displayName }
+    } catch (error) {
+        if (error.code !== 'auth/cancelled-popup-request') {
+        console.error(error)
+        }
+        return null
+    }
 }
 
 export async function logout() {
-  await auth.signOut()
+    await auth.signOut()
 }
