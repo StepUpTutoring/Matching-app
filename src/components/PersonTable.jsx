@@ -4,7 +4,7 @@ import {
   useMaterialReactTable,
 } from 'material-react-table';
 
-const PersonTable = ({ people, type, onSelect, selectedPerson, calculateDetailedOverlap }) => {
+const PersonTable = ({ people, type, onSelect, selectedPerson, calculateDetailedOverlap, otherSelectedPerson }) => {
   const flattenObject = (obj, prefix = '') => {
     return Object.keys(obj).reduce((acc, k) => {
       const pre = prefix.length ? prefix + '.' : '';
@@ -27,38 +27,46 @@ const PersonTable = ({ people, type, onSelect, selectedPerson, calculateDetailed
   }), [people]);
 
   const columns = useMemo(() => {
-    if (data.length === 0) return [];
+    // Get all unique keys from all people
+    const allKeys = Array.from(new Set(people.flatMap(person => Object.keys(flattenObject(person)))));
     
-    const priorityFields = ['name', 'availability', 'language', 'liveScan', 'waitingDays'];
-    const allKeys = Object.keys(data[0]);
+    const commonFields = ['name', 'availability', 'language', 'liveScan', 'waitingDays'];
+    const tutorFields = ['certifications', 'experience', 'rating'];
+    const studentFields = ['grade', 'subjects', 'parentContact'];
+
+    const priorityFields = type === 'tutor' 
+      ? [...commonFields, ...tutorFields] 
+      : [...commonFields, ...studentFields];
     
-    const createColumn = (key) => ({
-      accessorKey: key,
-      header: key.split('.').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-      size: 150,
-      Cell: ({ cell }) => {
-        if (key === 'availability') {
-          const isSelected = selectedPerson?.id === cell.row.original.id;
-          const { overlappingSlots, totalOverlapHours, overlappingDays } = isSelected && selectedPerson
-            ? calculateDetailedOverlap(cell.row.original, selectedPerson) 
-            : { overlappingSlots: [], totalOverlapHours: 0, overlappingDays: 0 };
-          const overlapDetails = isSelected && overlappingSlots
-            ? overlappingSlots.map(slot => `${slot.day}: ${slot.time} (${(slot.overlap / 60).toFixed(1)} hours)`).join(', ') 
-            : '';
-          return (
-            <>
-              <div>{Array.isArray(cell.getValue()) ? cell.getValue().join(', ') : cell.getValue()}</div>
-              {isSelected && (
-                <div>
-                  <div className="text-xs font-bold mt-1">{`OVERLAP: ${overlappingDays} days, ${totalOverlapHours.toFixed(1)} hours`}</div>
-                  <div className="text-xs text-teal-600 mt-1">{overlapDetails}</div>
-                </div>
-              )}
-            </>
-          );
-        }
-        return cell.getValue();
-      },
+      const createColumn = (key) => ({
+        accessorKey: key,
+        header: key.split('.').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+        size: 150,
+        Cell: ({ cell }) => {
+          if (key === 'availability') {
+            const availabilityValue = cell.getValue();
+            const availabilityArray = Array.isArray(availabilityValue) ? availabilityValue : [availabilityValue];
+            const showOverlap = type === 'student' ? otherSelectedPerson : selectedPerson;
+            const { overlappingSlots, totalOverlapHours, overlappingDays } = showOverlap
+              ? calculateDetailedOverlap(cell.row.original, showOverlap) 
+              : { overlappingSlots: [], totalOverlapHours: 0, overlappingDays: 0 };
+            const overlapDetails = overlappingSlots.length > 0
+              ? overlappingSlots.map(slot => `${slot.day}: ${slot.time} (${(slot.overlap / 60).toFixed(1)} hours)`).join(', ') 
+              : '';
+            return (
+              <>
+                <div>{availabilityArray.join(', ')}</div>
+                {showOverlap && (
+                  <div>
+                    <div className="text-xs font-bold mt-1">{`OVERLAP: ${overlappingDays} days, ${totalOverlapHours.toFixed(1)} hours`}</div>
+                    <div className="text-xs text-teal-600 mt-1">{overlapDetails}</div>
+                  </div>
+                )}
+              </>
+            );
+          }
+          return cell.getValue();
+        },
       filterVariant: key === 'liveScan' ? 'select' : 'text',
       filterSelectOptions: key === 'liveScan' ? ['Yes', 'No'] : undefined,
     });
@@ -77,13 +85,13 @@ const PersonTable = ({ people, type, onSelect, selectedPerson, calculateDetailed
           </button>
         ),
       },
-      ...priorityFields.map(createColumn),
-      ...allKeys.filter(key => key !== 'id' && key !== 'action' && !priorityFields.includes(key)).map(key => ({
+      ...priorityFields.filter(field => allKeys.includes(field)).map(createColumn),
+      ...allKeys.filter(key => !priorityFields.includes(key) && key !== 'id').map(key => ({
         ...createColumn(key),
         hidden: true,
       })),
     ];
-  }, [data, selectedPerson, calculateDetailedOverlap, onSelect, type]);
+  }, [people, type, selectedPerson, calculateDetailedOverlap, onSelect, otherSelectedPerson]);
 
   const table = useMaterialReactTable({
     columns,

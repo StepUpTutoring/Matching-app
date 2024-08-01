@@ -2,7 +2,6 @@ import React from 'react';
 
 const DetailsBar = ({ student, tutor, onClose, handleManualMatch, calculateDetailedOverlap }) => {
   if (!student && !tutor) return null;
-
   const { overlappingSlots } = student && tutor 
     ? calculateDetailedOverlap(student, tutor)
     : { overlappingSlots: [], totalOverlapHours: 0, overlappingDays: 0 };

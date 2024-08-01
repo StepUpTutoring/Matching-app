@@ -10,13 +10,17 @@ const RecommendedMatches = ({
   waitingTimeWeight,
   MIN_OVERLAP_THRESHOLD
 }) => {
+  console.log("RecommendedMatches component called", { type, selectedPerson, otherPersonsLength: otherPersons?.length });
+
   const [recommendedMatches, setRecommendedMatches] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
+    console.log("RecommendedMatches useEffect", { selectedPerson, otherPersonsLength: otherPersons?.length });
     if (selectedPerson && otherPersons && otherPersons.length > 0) {
       calculateRecommendedMatches();
     } else {
+      console.log("Not calculating recommended matches", { selectedPerson, otherPersonsLength: otherPersons?.length });
       setRecommendedMatches([]);
     }
   }, [selectedPerson, otherPersons, waitingTimeWeight, MIN_OVERLAP_THRESHOLD]);
@@ -40,10 +44,9 @@ const RecommendedMatches = ({
     
     console.log('Recommended matches:', sorted);
     setRecommendedMatches(sorted);
-    setIsOpen(true);
   };
 
-  if (recommendedMatches.length === 0) {
+  if (!selectedPerson || recommendedMatches.length === 0) {
     return null;
   }
 
@@ -53,7 +56,7 @@ const RecommendedMatches = ({
         className="w-full px-4 py-2 text-left font-bold bg-gray-100 hover:bg-gray-200 transition-colors"
         onClick={() => setIsOpen(!isOpen)}
       >
-        Recommended Matches
+        Recommended Matches ({recommendedMatches.length})
         <span className="float-right">{isOpen ? '▲' : '▼'}</span>
       </button>
       {isOpen && (
@@ -61,7 +64,7 @@ const RecommendedMatches = ({
           people={recommendedMatches.map(match => match.person)}
           type={type === 'student' ? 'tutor' : 'student'}
           onSelect={onSelect}
-          selectedPerson={null}
+          selectedPerson={selectedPerson}
           calculateDetailedOverlap={calculateDetailedOverlap}
           extraInfo={recommendedMatches}
         />

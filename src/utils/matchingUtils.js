@@ -19,13 +19,16 @@ export const calculateDetailedOverlap = (person1, person2) => {
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
   };
 
-  person1.availability.forEach(slot1 => {
+  const availability1 = Array.isArray(person1.availability) ? person1.availability : [person1.availability];
+  const availability2 = Array.isArray(person2.availability) ? person2.availability : [person2.availability];
+
+  availability1.forEach(slot1 => {
     if (!slot1) return;
     const [day1, timeRange1] = slot1.split(' ');
     if (!timeRange1) return;
     const [start1, end1] = timeRange1.split('-').map(parseTime);
 
-    person2.availability.forEach(slot2 => {
+    availability2.forEach(slot2 => {
       if (!slot2) return;
       const [day2, timeRange2] = slot2.split(' ');
       if (!timeRange2) return;
