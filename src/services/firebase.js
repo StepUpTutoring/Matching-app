@@ -2,9 +2,11 @@ import {
     getFirestore,
     collection,
     query,
+    where,
     getDocs,
     onSnapshot,
     addDoc,
+    limit
 } from 'firebase/firestore';
 
 import { initializeApp } from 'firebase/app'
@@ -73,10 +75,12 @@ const calculateWaitingDays = (appliedDate) => {
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   return diffDays.toString();
 };
-
 export const fetchTutors = async () => {
     try {
-        const tutorsQuery = query(collection(db, 'tutors'));
+        const tutorsQuery = query(
+            collection(db, 'tutors'),
+            where('Status', 'in', ['Ready to Tutor', 'Needs Rematch', 'Matched'])
+        );
         const querySnapshot = await getDocs(tutorsQuery);
         const tutors = querySnapshot.docs.map(doc => processPersonData({ id: doc.id, ...doc.data() }));
         console.log('Processed tutors:', tutors);
@@ -89,7 +93,10 @@ export const fetchTutors = async () => {
 
 export const fetchStudents = async () => {
     try {
-        const studentsQuery = query(collection(db, 'students'));
+        const studentsQuery = query(
+            collection(db, 'students'),
+            where('Status', 'in', ['Needs a Match', 'Needs Rematch'])
+        );
         const querySnapshot = await getDocs(studentsQuery);
         const students = querySnapshot.docs.map(doc => processPersonData({ id: doc.id, ...doc.data() }));
         console.log('Processed students:', students);
@@ -101,7 +108,10 @@ export const fetchStudents = async () => {
 };
 
 export const subscribeTutors = (callback) => {
-    const tutorsQuery = query(collection(db, 'tutors'));
+    const tutorsQuery = query(
+        collection(db, 'tutors'),
+        where('Status', 'in', ['Ready to Tutor', 'Needs Rematch', 'Matched'])
+    );
     return onSnapshot(tutorsQuery, (querySnapshot) => {
         const tutors = querySnapshot.docs.map(doc => processPersonData({ id: doc.id, ...doc.data() }));
         callback(tutors);
@@ -109,7 +119,11 @@ export const subscribeTutors = (callback) => {
 };
 
 export const subscribeStudents = (callback) => {
-    const studentsQuery = query(collection(db, 'students'));
+    const studentsQuery = query(
+        collection(db, 'students'),
+        limit(100)
+        // where('Status', 'in', ['Needs a Match', 'Needs Rematch'])
+    );
     return onSnapshot(studentsQuery, (querySnapshot) => {
         const students = querySnapshot.docs.map(doc => processPersonData({ id: doc.id, ...doc.data() }));
         callback(students);
