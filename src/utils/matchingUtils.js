@@ -53,11 +53,75 @@ export const calculateDetailedOverlap = (person1, person2) => {
     });
   });
 
+  // Generate proposed meeting times
+  const proposedMeetings = generateProposedMeetings(overlappingSlots);
+
   return { 
     overlappingSlots, 
     totalOverlapHours: Math.round(totalOverlapHours * 10) / 10,
-    overlappingDays: overlappingDays.size
+    overlappingDays: overlappingDays.size,
+    proposedMeetings
   };
+};
+
+const generateProposedMeetings = (overlappingSlots) => {
+  if (overlappingSlots.length < 2) {
+    return [];
+  }
+
+  // Sort slots by day of week to ensure proper spacing
+  const dayOrder = {
+    'Monday': 0,
+    'Tuesday': 1,
+    'Wednesday': 2,
+    'Thursday': 3,
+    'Friday': 4
+  };
+
+  const sortedSlots = [...overlappingSlots].sort((a, b) => 
+    dayOrder[a.day] - dayOrder[b.day]
+  );
+
+  // Try to find slots at least one day apart
+  let firstSlot = null;
+  let secondSlot = null;
+
+  for (let i = 0; i < sortedSlots.length; i++) {
+    if (!firstSlot) {
+      firstSlot = sortedSlots[i];
+      continue;
+    }
+
+    // Check if this slot is at least one day apart from the first slot
+    if (Math.abs(dayOrder[sortedSlots[i].day] - dayOrder[firstSlot.day]) > 1) {
+      secondSlot = sortedSlots[i];
+      break;
+    }
+  }
+
+  // If we couldn't find slots more than one day apart, take the first two available slots
+  if (!secondSlot && sortedSlots.length >= 2) {
+    firstSlot = sortedSlots[0];
+    secondSlot = sortedSlots[1];
+  }
+
+  if (!firstSlot || !secondSlot) {
+    return [];
+  }
+
+  // For each slot, propose a meeting time at the start of the overlap period
+  const proposedMeetings = [
+    {
+      day: firstSlot.day,
+      time: firstSlot.time.split('-')[0]  // Take the start time of the overlap
+    },
+    {
+      day: secondSlot.day,
+      time: secondSlot.time.split('-')[0]  // Take the start time of the overlap
+    }
+  ];
+
+  return proposedMeetings;
 };
 
 export const calculateMatrixValue = (person1, person2, waitingTimeWeight) => {

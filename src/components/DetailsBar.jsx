@@ -1,6 +1,6 @@
 import React from 'react';
 
-const DetailsBar = ({ student, tutor, onClose, handleManualMatch, calculateDetailedOverlap }) => {
+const DetailsBar = ({ student, tutor, onClose, handleManualMatch, calculateDetailedOverlap, children }) => {
   if (!student && !tutor) return null;
   const { overlappingSlots } = student && tutor 
     ? calculateDetailedOverlap(student, tutor)
@@ -58,6 +58,7 @@ const DetailsBar = ({ student, tutor, onClose, handleManualMatch, calculateDetai
             </div>
           </div>
         )}
+        {children}
         {student && tutor && (
           <button 
             onClick={handleManualMatch}

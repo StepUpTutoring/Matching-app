@@ -36,12 +36,10 @@ const TutorStudentMatchingApp = () => {
   });
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedTutor, setSelectedTutor] = useState(null);
-  const [selectedMatch, setSelectedMatch] = useState(null);
   const [matches, setMatches] = useState([]);
 
   const addLog = (message) => {
     setLogs((prevLogs) => [...prevLogs, message]);
-    console.log(message);
   };
 
   const toggleFilter = (filterName) => {
@@ -51,6 +49,7 @@ const TutorStudentMatchingApp = () => {
     }));
   };
 
+  // Separate effect for initial data fetch
   useEffect(() => {
     const fetchInitialData = async () => {
       setIsLoading(true);
@@ -70,22 +69,21 @@ const TutorStudentMatchingApp = () => {
     };
 
     fetchInitialData();
+  }, []);
 
-    // Set up real-time listeners
+  // Separate effect for subscriptions
+  useEffect(() => {
+    const matchedTutorIds = new Set(matches.map((m) => m.tutor.id));
+    const matchedStudentIds = new Set(matches.map((m) => m.student.id));
+
     const unsubscribeTutors = subscribeTutors((newTutors) => {
-      setUnmatchedTutors((prev) => {
-        const matchedTutorIds = new Set(matches.map((m) => m.tutor.id));
-        return newTutors.filter((t) => !matchedTutorIds.has(t.id));
-      });
-    });
-    const unsubscribeStudents = subscribeStudents((newStudents) => {
-      setUnmatchedStudents((prev) => {
-        const matchedStudentIds = new Set(matches.map((m) => m.student.id));
-        return newStudents.filter((s) => !matchedStudentIds.has(s.id));
-      });
+      setUnmatchedTutors(newTutors.filter((t) => !matchedTutorIds.has(t.id)));
     });
 
-    // Clean up listeners on component unmount
+    const unsubscribeStudents = subscribeStudents((newStudents) => {
+      setUnmatchedStudents(newStudents.filter((s) => !matchedStudentIds.has(s.id)));
+    });
+
     return () => {
       unsubscribeTutors();
       unsubscribeStudents();
@@ -103,7 +101,6 @@ const TutorStudentMatchingApp = () => {
       const matchId = await createMatch(matchData);
       addLog(`Match created with ID: ${matchId}`);
 
-      // Update local state
       setMatches((prev) => [...prev, { ...match, id: matchId }]);
       setUnmatchedTutors((prev) => prev.filter((t) => t.id !== match.tutor.id));
       setUnmatchedStudents((prev) =>
@@ -178,24 +175,28 @@ const TutorStudentMatchingApp = () => {
       addLog("Matching process completed");
     } catch (error) {
       addLog(`Error occurred: ${error.message}`);
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleManualMatch = async () => {
+  const handleManualMatch = () => {
     if (selectedStudent && selectedTutor) {
-      const overlap = calculateDetailedOverlap(
+      const { overlappingDays, totalOverlapHours } = calculateDetailedOverlap(
         selectedStudent,
         selectedTutor
-      ).overlappingDays;
+      );
+      
       const newMatch = {
         student: selectedStudent,
         tutor: selectedTutor,
-        overlap,
+        overlap: overlappingDays,
+        totalOverlapHours
       };
-      await handleMatch(newMatch);
+      
+      setMatches(prev => [...prev, newMatch]);
+      setUnmatchedStudents(prev => prev.filter(s => s.id !== selectedStudent.id));
+      setUnmatchedTutors(prev => prev.filter(t => t.id !== selectedTutor.id));
       setSelectedStudent(null);
       setSelectedTutor(null);
     }
@@ -216,6 +217,11 @@ const TutorStudentMatchingApp = () => {
     }
   };
 
+  const handleMatchClick = (match) => {
+    setSelectedStudent(match.student);
+    setSelectedTutor(match.tutor);
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 py-6 flex flex-col justify-center sm:py-12">
       <div className="relative py-3 sm:max-w-full sm:mx-auto">
@@ -232,7 +238,7 @@ const TutorStudentMatchingApp = () => {
               waitingTimeWeight={waitingTimeWeight}
               setWaitingTimeWeight={setWaitingTimeWeight}
               handleRoll={handleRoll}
-              handleMatch={() => {}} // This should be updated to handle batch matching if needed
+              handleMatch={() => {}}
               isLoading={isLoading}
               matchesCount={matches.length}
             />
@@ -269,7 +275,7 @@ const TutorStudentMatchingApp = () => {
               <MatchesTable
                 matches={matches}
                 onUnpair={handleUnpair}
-                onOpenModal={setSelectedMatch}
+                onOpenModal={handleMatchClick}
               />
             )}
 
@@ -297,13 +303,7 @@ const TutorStudentMatchingApp = () => {
         }}
         calculateDetailedOverlap={calculateDetailedOverlap}
       >
-        {console.log("DetailsBar children", {
-          selectedStudent,
-          selectedTutor,
-          unmatchedStudentsLength: unmatchedStudents.length,
-          unmatchedTutorsLength: unmatchedTutors.length,
-        })}
-        {selectedStudent && (
+        {selectedStudent && !selectedTutor && (
           <RecommendedMatches
             selectedPerson={selectedStudent}
             otherPersons={unmatchedTutors}
@@ -313,7 +313,7 @@ const TutorStudentMatchingApp = () => {
             MIN_OVERLAP_THRESHOLD={MIN_OVERLAP_THRESHOLD}
           />
         )}
-        {selectedTutor && (
+        {selectedTutor && !selectedStudent && (
           <RecommendedMatches
             selectedPerson={selectedTutor}
             otherPersons={unmatchedStudents}

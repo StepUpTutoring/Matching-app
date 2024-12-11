@@ -12,6 +12,7 @@ import {
 import { initializeApp } from 'firebase/app'
 import { GoogleAuthProvider, signInWithPopup, getAuth } from 'firebase/auth'
 import { getFunctions } from 'firebase/functions'
+import Airtable from 'airtable';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -120,26 +121,53 @@ export const subscribeTutors = (callback) => {
 
 export const subscribeStudents = (callback) => {
     const studentsQuery = query(
-        collection(db, 'students'),
-        limit(100)
-        // where('Status', 'in', ['Needs a Match', 'Needs Rematch'])
+      collection(db, 'students'),
+      limit(100),
+      where('Status', 'in', ['Needs a Match', 'Needs Rematch'])
     );
     return onSnapshot(studentsQuery, (querySnapshot) => {
-        const students = querySnapshot.docs.map(doc => processPersonData({ id: doc.id, ...doc.data() }));
-        callback(students);
+      const students = querySnapshot.docs.map((doc) =>
+        processPersonData({ id: doc.id, ...doc.data() })
+      );
+      callback(students);
     });
-};
-
-export const createMatch = async (matchData) => {
-    try {
-        const docRef = await addDoc(collection(db, 'matches'), matchData);
-        console.log("Match created with ID: ", docRef.id);
-        return docRef.id;
-    } catch (error) {
-        console.error("Error creating match:", error);
-        throw error;
-    }
-};
+  };
+  
+  const base = new Airtable({apiKey: import.meta.env.VITE_AIRTABLE_PERSONAL_ACCESS_TOKEN}).base(import.meta.env.VITE_AIRTABLE_BASE_ID);
+  
+  export const createMatch = async (matchData) => {
+      try {
+          const { studentId, tutorId } = matchData;
+  
+          // Find the student record
+          const studentRecords = await base('Students').select({
+              filterByFormula: `{ID} = '${studentId}'`
+          }).firstPage();
+  
+          if (studentRecords.length === 0) {
+              throw new Error(`Student with ID ${studentId} not found`);
+          }
+  
+          const studentRecord = studentRecords[0];
+  
+          // Update the student record
+          const updatedStudentRecord = await base('Students').update([
+              {
+                  id: studentRecord.id,
+                  fields: {
+                      'Tutors': [...(studentRecord.fields['Tutors'] || []), tutorId],
+                      'Status': 'Matched'
+                  }
+              }
+          ]);
+  
+          console.log("Match created for student:", updatedStudentRecord[0].id);
+          return updatedStudentRecord[0].id;
+      } catch (error) {
+          console.error("Error creating match:", error);
+          throw error;
+      }
+  };
 
 export async function loginWithGoogle() {
     try {

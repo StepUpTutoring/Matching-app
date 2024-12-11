@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import PersonTable from './PersonTable';
 import { calculateDetailedOverlap, calculateMatrixValue } from '../utils/matchingUtils';
 
@@ -10,41 +10,30 @@ const RecommendedMatches = ({
   waitingTimeWeight,
   MIN_OVERLAP_THRESHOLD
 }) => {
-  console.log("RecommendedMatches component called", { type, selectedPerson, otherPersonsLength: otherPersons?.length });
-
-  const [recommendedMatches, setRecommendedMatches] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => {
-    console.log("RecommendedMatches useEffect", { selectedPerson, otherPersonsLength: otherPersons?.length });
-    if (selectedPerson && otherPersons && otherPersons.length > 0) {
-      calculateRecommendedMatches();
-    } else {
-      console.log("Not calculating recommended matches", { selectedPerson, otherPersonsLength: otherPersons?.length });
-      setRecommendedMatches([]);
+  // Memoize recommended matches calculation to prevent unnecessary recalculations
+  const recommendedMatches = useMemo(() => {
+    if (!selectedPerson || !otherPersons?.length) {
+      return [];
     }
-  }, [selectedPerson, otherPersons, waitingTimeWeight, MIN_OVERLAP_THRESHOLD]);
 
-  const calculateRecommendedMatches = () => {
-    console.log('Calculating recommended matches for:', selectedPerson?.name, 'Type:', type);
-    const sorted = otherPersons
+    return otherPersons
       .filter(other => other != null)
       .map(other => {
-        const { overlappingDays, totalOverlapHours } = calculateDetailedOverlap(selectedPerson, other);
+        const { overlappingDays, totalOverlapHours, overlappingSlots } = calculateDetailedOverlap(selectedPerson, other);
         return {
           person: other,
           overlappingDays,
           totalOverlapHours,
+          overlappingSlots,
           matrixValue: calculateMatrixValue(selectedPerson, other, waitingTimeWeight)
         };
       })
       .filter(match => match.overlappingDays >= MIN_OVERLAP_THRESHOLD)
       .sort((a, b) => b.matrixValue - a.matrixValue)
       .slice(0, 3);
-    
-    console.log('Recommended matches:', sorted);
-    setRecommendedMatches(sorted);
-  };
+  }, [selectedPerson, otherPersons, waitingTimeWeight, MIN_OVERLAP_THRESHOLD]);
 
   if (!selectedPerson || recommendedMatches.length === 0) {
     return null;
@@ -65,8 +54,8 @@ const RecommendedMatches = ({
           type={type === 'student' ? 'tutor' : 'student'}
           onSelect={onSelect}
           selectedPerson={selectedPerson}
+          otherSelectedPerson={selectedPerson}
           calculateDetailedOverlap={calculateDetailedOverlap}
-          extraInfo={recommendedMatches}
         />
       )}
     </div>
