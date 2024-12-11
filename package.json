@@ -1,6 +1,5 @@
 {
   "name": "tutor-student-matching-app",
-  "homepage": "https://StepUpTutoring.github.io/Matching-app",
   "version": "0.1.0",
   "private": true,
   "type": "module",

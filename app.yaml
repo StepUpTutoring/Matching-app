@@ -1,0 +1,19 @@
+runtime: nodejs18
+instance_class: F1
+env_variables:
+  VITE_FIREBASE_API_KEY: "AIzaSyBOjNeFphvxWQWMv2yZy5adaJLaBeQ1_do"
+  VITE_FIREBASE_AUTH_DOMAIN: "step-up-portal.firebaseapp.com"
+  VITE_PROJECT_ID: "step-up-portal"
+  VITE_STORAGE_BUCKET: "step-up-portal.appspot.com"
+  VITE_MESSAGING_SENDER_ID: "1056884601547"
+  VITE_APP_ID: "1:1056884601547:web:784205ff4bf214b3f8214e"
+  VITE_MEASUREMENT_ID: "G-QGBMWFZZRP"
+  VITE_AIRTABLE_PERSONAL_ACCESS_TOKEN: "patuXDiKgLUqAn6Dz"
+  VITE_AIRTABLE_BASE_ID: "appk1SzoRcgno7XQT"
+handlers:
+- url: /(.*)
+  static_files: dist/\1
+  upload: dist/(.*)
+- url: /.*
+  static_files: dist/index.html
+  upload: dist/index.html

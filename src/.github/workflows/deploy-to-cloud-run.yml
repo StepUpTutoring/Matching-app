@@ -7,8 +7,8 @@ on:
 
 env:
   PROJECT_ID: matching-app-429708
-  SERVICE_NAME: tutor-student-matching-app 
-  REGION: us-central1  # TODO: Replace with your preferred region
+  SERVICE_NAME: tutor-student-matching-app  
+  REGION: us-central1 
 
 jobs:
   deploy:
