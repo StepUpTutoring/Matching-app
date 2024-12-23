@@ -138,11 +138,28 @@ export const subscribeStudents = (callback) => {
   export const createMatch = async (matchData) => {
       try {
           const { studentId, tutorId } = matchData;
+          console.log("Match Data:", matchData);
+          console.log("Searching for student with ID:", studentId);
+          console.log("Using tutor ID:", tutorId);
   
           // Find the student record
+          console.log("Airtable query:", {
+              base: import.meta.env.VITE_AIRTABLE_BASE_ID,
+              table: 'Students',
+              formula: `{Student ID} = '${studentId}'`
+          });
+
           const studentRecords = await base('Students').select({
-              filterByFormula: `{ID} = '${studentId}'`
+              filterByFormula: `{Student ID} = '${studentId}'`
           }).firstPage();
+
+          console.log("Airtable response:", {
+              recordsFound: studentRecords.length,
+              firstRecord: studentRecords[0] ? {
+                  id: studentRecords[0].id,
+                  fields: studentRecords[0].fields
+              } : null
+          });
   
           if (studentRecords.length === 0) {
               throw new Error(`Student with ID ${studentId} not found`);

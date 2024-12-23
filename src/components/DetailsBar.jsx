@@ -31,7 +31,7 @@ const DetailsBar = ({ student, tutor, onClose, handleManualMatch, calculateDetai
   );
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg p-4" style={{ boxShadow: '0 -4px 6px -1px rgba(0, 0, 0, 0.1), 0 -2px 4px -1px rgba(0, 0, 0, 0.06)' }}>
+    <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg p-4" style={{ boxShadow: '0 -4px 6px -1px rgba(0, 0, 0, 0.1), 0 -2px 4px -1px rgba(0, 0, 0, 0.06)', zIndex: 9999 }}>
       <div className="max-w-full mx-32">
         <div className="flex justify-between items-center mb-4">
           <button 

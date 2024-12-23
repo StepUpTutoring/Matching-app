@@ -97,7 +97,7 @@ const TutorStudentMatchingApp = () => {
     try {
       const matchData = {
         tutorId: match.tutor.id,
-        studentId: match.student.id,
+        studentId: match.student.studentId,  // Use the Airtable Student ID
         overlap: match.overlap,
         createdAt: new Date(),
         proposedTime: match.proposedTime || ''
