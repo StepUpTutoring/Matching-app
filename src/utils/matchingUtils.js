@@ -19,8 +19,15 @@ export const calculateDetailedOverlap = (person1, person2) => {
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
   };
 
-  const availability1 = Array.isArray(person1.availability) ? person1.availability : [person1.availability];
-  const availability2 = Array.isArray(person2.availability) ? person2.availability : [person2.availability];
+  // Ensure availability is always an array and filter out null/undefined values
+  const normalizeAvailability = (availability) => {
+    if (!availability) return [];
+    const availArray = Array.isArray(availability) ? availability : [availability];
+    return availArray.filter(slot => slot && typeof slot === 'string');
+  };
+
+  const availability1 = normalizeAvailability(person1.availability);
+  const availability2 = normalizeAvailability(person2.availability);
 
   availability1.forEach(slot1 => {
     if (!slot1) return;
@@ -124,56 +131,24 @@ const generateProposedMeetings = (overlappingSlots) => {
   return proposedMeetings;
 };
 
-export const calculateMatrixValue = (person1, person2, waitingTimeWeight) => {
+export const calculateMatrixValue = (person1, person2, waitingTimeWeight, tQualityWeight = 0.2) => {
   if (!person1 || !person2) return 0;
 
   const { overlappingDays, totalOverlapHours } = calculateDetailedOverlap(person1, person2);
-  const remainingWeight = 1 - waitingTimeWeight;
+  
+  // Calculate remaining weight after accounting for both waiting time and t-quality
+  const remainingWeight = 1 - waitingTimeWeight - tQualityWeight;
+  
+  // Split remaining weight between days and hours scores
   const daysScore = overlappingDays * (remainingWeight / 2);
   const hoursScore = (totalOverlapHours / 5) * (remainingWeight / 2);
   
+  // Calculate waiting time score
   const maxWaitingDays = 30; // Assume 30 days is the maximum waiting time
   const waitingScore = ((person1.waitingDays || 0) + (person2.waitingDays || 0)) / (2 * maxWaitingDays) * waitingTimeWeight;
   
-  return daysScore + hoursScore + waitingScore;
-};
-
-export const generateMockData = (AVAILABILITY_SLOTS) => {
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  const languages = ['English', 'Spanish'];
+  // Calculate T-quality score (assuming T-quality is a value between 0-100)
+  const tQualityScore = (person2['T-quality'] || 0) / 100 * tQualityWeight;
   
-  const generateTimeRange = () => {
-    const startHour = Math.floor(Math.random() * 12) + 8; // 8 AM to 7 PM
-    const duration = Math.floor(Math.random() * 3) + 2; // 2 to 4 hours
-    const endHour = Math.min(startHour + duration, 20); // Cap at 8 PM
-    const minutes = Math.random() > 0.5 ? '30' : '00';
-    return `${startHour}:${minutes}-${endHour}:${minutes}`;
-  };
-
-  const generateAvailability = () => {
-    const availability = new Set();
-    while (availability.size < AVAILABILITY_SLOTS) {
-      const day = days[Math.floor(Math.random() * days.length)];
-      const timeRange = generateTimeRange();
-      availability.add(`${day} ${timeRange}`);
-    }
-    return Array.from(availability);
-  };
-
-  const generatePerson = (name) => ({
-    id: `${name.toLowerCase().replace(' ', '_')}`,
-    name: name,
-    availability: generateAvailability(),
-    language: languages[Math.floor(Math.random() * languages.length)],
-    liveScan: Math.random() < 0.9,
-    waitingDays: Math.floor(Math.random() * 30) // Random number of waiting days (0-29)
-  });
-  
-  const studentNames = ["Daniel", "Alex", "Emma", "Olivia", "Ethan", "Sophia", "Liam", "Ava", "Joe", "Justin"];
-  const tutorNames = ["Jack", "Sarah", "Michael", "Emily", "David", "Jessica", "Justice", "George", "Jane", "Haripriya"];
-
-  return {
-    students: studentNames.map(name => generatePerson(name)),
-    tutors: tutorNames.map(name => generatePerson(name)),
-  };
+  return daysScore + hoursScore + waitingScore + tQualityScore;
 };

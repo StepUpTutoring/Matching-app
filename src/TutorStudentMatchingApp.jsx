@@ -26,13 +26,14 @@ const TutorStudentMatchingApp = () => {
   }
   const [MIN_OVERLAP_THRESHOLD, setMIN_OVERLAP_THRESHOLD] = useState(2);
   const [waitingTimeWeight, setWaitingTimeWeight] = useState(0.2);
+  const [tQualityWeight, setTQualityWeight] = useState(0);
   const [unmatchedStudents, setUnmatchedStudents] = useState([]);
   const [unmatchedTutors, setUnmatchedTutors] = useState([]);
   const [logs, setLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [filters, setFilters] = useState({
-    language: true,
-    liveScan: true,
+    language: false,
+    liveScan: false,
   });
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedTutor, setSelectedTutor] = useState(null);
@@ -81,7 +82,9 @@ const TutorStudentMatchingApp = () => {
     });
 
     const unsubscribeStudents = subscribeStudents((newStudents) => {
-      setUnmatchedStudents(newStudents.filter((s) => !matchedStudentIds.has(s.id)));
+      setUnmatchedStudents(
+        newStudents.filter((s) => !matchedStudentIds.has(s.id))
+      );
     });
 
     return () => {
@@ -97,15 +100,15 @@ const TutorStudentMatchingApp = () => {
         studentId: match.student.id,
         overlap: match.overlap,
         createdAt: new Date(),
+        proposedTime: match.proposedTime || ''
       };
       const matchId = await createMatch(matchData);
       addLog(`Match created with ID: ${matchId}`);
 
-      setMatches((prev) => [...prev, { ...match, id: matchId }]);
+      // Remove from unmatched lists and matches array
       setUnmatchedTutors((prev) => prev.filter((t) => t.id !== match.tutor.id));
-      setUnmatchedStudents((prev) =>
-        prev.filter((s) => s.id !== match.student.id)
-      );
+      setUnmatchedStudents((prev) => prev.filter((s) => s.id !== match.student.id));
+      setMatches((prev) => prev.filter((m) => m !== match));
     } catch (error) {
       addLog(`Error creating match: ${error.message}`);
     }
@@ -126,7 +129,12 @@ const TutorStudentMatchingApp = () => {
           ) {
             return -Infinity;
           }
-          return calculateMatrixValue(student, tutor, waitingTimeWeight);
+          return calculateMatrixValue(
+            student,
+            tutor,
+            waitingTimeWeight,
+            tQualityWeight
+          );
         })
       );
       addLog("Cost matrix created");
@@ -156,6 +164,7 @@ const TutorStudentMatchingApp = () => {
               tutor,
               overlap: overlappingDays,
               totalOverlapHours,
+              proposedTime: student.proposedTime || ''
             });
           } else {
             addLog(
@@ -186,17 +195,27 @@ const TutorStudentMatchingApp = () => {
         selectedStudent,
         selectedTutor
       );
-      
+
+      const { proposedMeetings } = calculateDetailedOverlap(selectedStudent, selectedTutor);
+      const proposedTime = proposedMeetings.length > 0 
+        ? `${proposedMeetings[0].day} ${proposedMeetings[0].time}, ${proposedMeetings[1].day} ${proposedMeetings[1].time}`
+        : '';
+
       const newMatch = {
         student: selectedStudent,
         tutor: selectedTutor,
         overlap: overlappingDays,
-        totalOverlapHours
+        totalOverlapHours,
+        proposedTime
       };
-      
-      setMatches(prev => [...prev, newMatch]);
-      setUnmatchedStudents(prev => prev.filter(s => s.id !== selectedStudent.id));
-      setUnmatchedTutors(prev => prev.filter(t => t.id !== selectedTutor.id));
+
+      setMatches((prev) => [...prev, newMatch]);
+      setUnmatchedStudents((prev) =>
+        prev.filter((s) => s.id !== selectedStudent.id)
+      );
+      setUnmatchedTutors((prev) =>
+        prev.filter((t) => t.id !== selectedTutor.id)
+      );
       setSelectedStudent(null);
       setSelectedTutor(null);
     }
@@ -220,7 +239,10 @@ const TutorStudentMatchingApp = () => {
   const handleMatchClick = (match) => {
     setSelectedStudent(match.student);
     setSelectedTutor(match.tutor);
+    setSelectedProposedTime(match.proposedTime);
   };
+
+  const [selectedProposedTime, setSelectedProposedTime] = useState(null);
 
   return (
     <div className="min-h-screen bg-gray-100 py-6 flex flex-col justify-center sm:py-12">
@@ -237,8 +259,15 @@ const TutorStudentMatchingApp = () => {
               setMinOverlapThreshold={setMIN_OVERLAP_THRESHOLD}
               waitingTimeWeight={waitingTimeWeight}
               setWaitingTimeWeight={setWaitingTimeWeight}
+              tQualityWeight={tQualityWeight}
+              setTQualityWeight={setTQualityWeight}
               handleRoll={handleRoll}
-              handleMatch={() => {}}
+              handleMatch={() => {
+                // Batch match all matches
+                matches.forEach(match => handleMatch(match));
+                // Clear matches array after all are processed
+                setMatches([]);
+              }}
               isLoading={isLoading}
               matchesCount={matches.length}
             />
@@ -276,6 +305,7 @@ const TutorStudentMatchingApp = () => {
                 matches={matches}
                 onUnpair={handleUnpair}
                 onOpenModal={handleMatchClick}
+                onMatch={handleMatch}
               />
             )}
 
@@ -300,26 +330,32 @@ const TutorStudentMatchingApp = () => {
         onClose={() => {
           setSelectedStudent(null);
           setSelectedTutor(null);
+          setSelectedProposedTime(null);
         }}
         calculateDetailedOverlap={calculateDetailedOverlap}
+        proposedTime={selectedProposedTime}
       >
         {selectedStudent && !selectedTutor && (
           <RecommendedMatches
+            style={{ zIndex: 2000 }}
             selectedPerson={selectedStudent}
             otherPersons={unmatchedTutors}
             type="student"
             onSelect={handlePersonSelect}
             waitingTimeWeight={waitingTimeWeight}
+            tQualityWeight={tQualityWeight}
             MIN_OVERLAP_THRESHOLD={MIN_OVERLAP_THRESHOLD}
           />
         )}
         {selectedTutor && !selectedStudent && (
           <RecommendedMatches
+            style={{ zIndex: 10000 }}
             selectedPerson={selectedTutor}
             otherPersons={unmatchedStudents}
             type="tutor"
             onSelect={handlePersonSelect}
             waitingTimeWeight={waitingTimeWeight}
+            tQualityWeight={tQualityWeight}
             MIN_OVERLAP_THRESHOLD={MIN_OVERLAP_THRESHOLD}
           />
         )}

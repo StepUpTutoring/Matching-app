@@ -1,7 +1,7 @@
 import React from 'react';
 import { calculateDetailedOverlap } from '../utils/matchingUtils';
 
-const MatchesTable = ({ matches, onUnpair, onOpenModal }) => {
+const MatchesTable = ({ matches, onUnpair, onOpenModal, onMatch }) => {
   const getProposedMeetings = (student, tutor) => {
     const { proposedMeetings } = calculateDetailedOverlap(student, tutor);
     return proposedMeetings || [];
@@ -56,8 +56,11 @@ const MatchesTable = ({ matches, onUnpair, onOpenModal }) => {
                     Unpair
                   </button>
                   <button 
-                    className="px-2 py-1 bg-gray-300 text-gray-700 rounded cursor-not-allowed"
-                    disabled
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMatch(match);
+                    }}
+                    className="px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors"
                   >
                     Match
                   </button>

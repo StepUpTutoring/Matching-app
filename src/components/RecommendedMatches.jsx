@@ -8,6 +8,7 @@ const RecommendedMatches = ({
   type, 
   onSelect, 
   waitingTimeWeight,
+  tQualityWeight,
   MIN_OVERLAP_THRESHOLD
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,13 +28,13 @@ const RecommendedMatches = ({
           overlappingDays,
           totalOverlapHours,
           overlappingSlots,
-          matrixValue: calculateMatrixValue(selectedPerson, other, waitingTimeWeight)
+          matrixValue: calculateMatrixValue(selectedPerson, other, waitingTimeWeight, tQualityWeight)
         };
       })
       .filter(match => match.overlappingDays >= MIN_OVERLAP_THRESHOLD)
       .sort((a, b) => b.matrixValue - a.matrixValue)
       .slice(0, 3);
-  }, [selectedPerson, otherPersons, waitingTimeWeight, MIN_OVERLAP_THRESHOLD]);
+  }, [selectedPerson, otherPersons, waitingTimeWeight, tQualityWeight, MIN_OVERLAP_THRESHOLD]);
 
   if (!selectedPerson || recommendedMatches.length === 0) {
     return null;

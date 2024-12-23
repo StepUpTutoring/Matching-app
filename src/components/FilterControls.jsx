@@ -6,7 +6,9 @@ const FilterControls = ({
   minOverlapThreshold, 
   setMinOverlapThreshold, 
   waitingTimeWeight, 
-  setWaitingTimeWeight, 
+  setWaitingTimeWeight,
+  tQualityWeight,
+  setTQualityWeight,
   handleRoll, 
   handleMatch, 
   isLoading, 
@@ -42,7 +44,7 @@ const FilterControls = ({
             max="5"
             value={minOverlapThreshold}
             onChange={(e) => setMinOverlapThreshold(parseInt(e.target.value))}
-            className="w-32"
+            className="w-24"
           />
           <span className="ml-2 text-gray-700">{minOverlapThreshold}</span>
         </div>
@@ -54,9 +56,21 @@ const FilterControls = ({
             max="100"
             value={waitingTimeWeight * 100}
             onChange={(e) => setWaitingTimeWeight(parseInt(e.target.value) / 100)}
-            className="w-32"
+            className="w-24"
           />
           <span className="ml-2 text-gray-700">{(waitingTimeWeight * 100).toFixed(0)}%</span>
+        </div>
+        <div className="flex items-center mt-2 sm:mt-0">
+          <span className="mr-2 text-gray-700">T-Quality Weight:</span>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={tQualityWeight * 100}
+            onChange={(e) => setTQualityWeight(parseInt(e.target.value) / 100)}
+            className="w-24"
+          />
+          <span className="ml-2 text-gray-700">{(tQualityWeight * 100).toFixed(0)}%</span>
         </div>
       </div>
       <div className="flex space-x-4 mt-2 sm:mt-0">

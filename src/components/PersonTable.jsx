@@ -43,15 +43,33 @@ const PersonTable = ({
     [people]
   );
 
-  // Memoize overlap calculations
+  // Memoize overlap calculations with proper dependency tracking
   const overlapDetails = useMemo(() => {
     if (!otherSelectedPerson) return null;
+    
+    // Create a stable key for each person's availability
+    const getAvailabilityKey = (person) => {
+      const avail = Array.isArray(person.availability) ? person.availability : [person.availability];
+      return avail.filter(Boolean).sort().join('|');
+    };
+    
+    // Calculate overlaps only if we have valid data
     const results = {};
     people.forEach(person => {
-      results[person.id] = calculateDetailedOverlap(person, otherSelectedPerson);
+      if (person && person.id && person.availability) {
+        results[person.id] = calculateDetailedOverlap(person, otherSelectedPerson);
+      }
     });
+    
     return results;
-  }, [people, otherSelectedPerson, calculateDetailedOverlap]);
+  }, [
+    // Only depend on the specific properties we need
+    people.map(p => p.id).join(','),
+    people.map(p => Array.isArray(p.availability) ? p.availability.join(',') : p.availability).join('|'),
+    otherSelectedPerson?.id,
+    otherSelectedPerson?.availability,
+    calculateDetailedOverlap
+  ]);
 
   const columns = useMemo(() => {
     const allKeys = Array.from(
@@ -60,6 +78,7 @@ const PersonTable = ({
 
     const commonFields = [
       'name',
+      'Status',
       'availability',
       'language',
       'liveScan',
@@ -86,9 +105,9 @@ const PersonTable = ({
       Cell: ({ cell, row }) => {
         if (key === 'availability') {
           const availabilityValue = cell.getValue();
-          const availabilityArray = Array.isArray(availabilityValue)
-            ? availabilityValue
-            : [availabilityValue];
+          const availabilityArray = availabilityValue ? 
+            (Array.isArray(availabilityValue) ? availabilityValue : [availabilityValue]).filter(Boolean) :
+            [];
 
           const overlap = overlapDetails?.[row.original.id];
           
@@ -112,8 +131,17 @@ const PersonTable = ({
         }
         return cell.getValue();
       },
-      filterVariant: key === 'liveScan' ? 'select' : 'text',
-      filterSelectOptions: key === 'liveScan' ? ['Yes', 'No'] : undefined,
+      filterVariant: key === 'liveScan' ? 'select' : key === 'Status' ? 'multi-select' : 'text',
+      filterSelectOptions: key === 'liveScan' ? ['Yes', 'No'] : 
+        key === 'Status' ? ['Ready to Tutor', 'Needs Rematch', 'Needs a Match'] : undefined,
+      filterFn: key === 'Status' ? 
+        (row, _columnId, filterValue) => {
+          // Handle both string and array filter values
+          const status = row.getValue('Status');
+          return Array.isArray(filterValue) 
+            ? filterValue.includes(status)
+            : filterValue === status;
+        } : undefined,
     });
 
     return [
@@ -169,6 +197,12 @@ const PersonTable = ({
         }
         return acc;
       }, {}),
+      columnFilters: [
+        {
+          id: 'Status',
+          value: type === 'tutor' ? ['Ready to Tutor', 'Needs Rematch'] : ['Needs a Match', 'Needs Rematch'],
+        },
+      ],
     },
     enableHiding: true,
     enableColumnActions: true,

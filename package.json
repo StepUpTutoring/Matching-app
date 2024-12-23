@@ -10,6 +10,7 @@
     "@material-tailwind/react": "^2.1.9",
     "@mui/material": "^5.16.1",
     "airtable": "^0.12.2",
+    "express": "^4.21.2",
     "firebase": "^10.12.3",
     "gh-pages": "^6.1.1",
     "material-react-table": "^2.13.0",
@@ -37,7 +38,8 @@
     "preview": "vite preview",
     "test": "vitest",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "start": "node server.js"
   },
   "browserslist": {
     "production": [

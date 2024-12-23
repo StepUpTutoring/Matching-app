@@ -156,7 +156,8 @@ export const subscribeStudents = (callback) => {
                   id: studentRecord.id,
                   fields: {
                       'Tutors': [...(studentRecord.fields['Tutors'] || []), tutorId],
-                      'Status': 'Matched'
+                      'Status': 'Matched',
+                      'Assigned Meeting Slots': matchData.proposedTime || ''
                   }
               }
           ]);

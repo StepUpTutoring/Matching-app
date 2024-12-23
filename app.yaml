@@ -10,10 +10,8 @@ env_variables:
   VITE_MEASUREMENT_ID: "G-QGBMWFZZRP"
   VITE_AIRTABLE_PERSONAL_ACCESS_TOKEN: "patuXDiKgLUqAn6Dz"
   VITE_AIRTABLE_BASE_ID: "appk1SzoRcgno7XQT"
+entrypoint: node server.js
 handlers:
-- url: /(.*)
-  static_files: dist/\1
-  upload: dist/(.*)
 - url: /.*
-  static_files: dist/index.html
-  upload: dist/index.html
+  secure: always
+  script: auto
