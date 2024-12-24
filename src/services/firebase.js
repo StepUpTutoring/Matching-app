@@ -138,20 +138,48 @@ export const subscribeStudents = (callback) => {
   export const createMatch = async (matchData) => {
       try {
           const { studentId, tutorId } = matchData;
-          console.log("Match Data:", matchData);
-          console.log("Searching for student with ID:", studentId);
-          console.log("Using tutor ID:", tutorId);
-  
+          console.log("Match Data:", JSON.stringify(matchData, null, 2));
+          console.log("Student ID to search for:", studentId);
+          console.log("Student ID type:", typeof studentId);
+          console.log("Tutor ID:", tutorId);
+
           // Find the student record
-          console.log("Airtable query:", {
-              base: import.meta.env.VITE_AIRTABLE_BASE_ID,
-              table: 'Students',
-              formula: `{Student ID} = '${studentId}'`
+          // Try different variations of the student ID format
+          const formattedId = studentId.replace('-', ''); // Try without hyphen
+          console.log("Trying variations of student ID:", {
+              original: studentId,
+              withoutHyphen: formattedId
           });
 
-          const studentRecords = await base('Students').select({
-              filterByFormula: `{Student ID} = '${studentId}'`
-          }).firstPage();
+          // Try multiple formulas to find the student
+          const formulas = [
+              `{Student ID} = '${studentId}'`,
+              `{Student ID} = '${formattedId}'`,
+              `LOWER({Student ID}) = LOWER('${studentId}')`,
+              `LOWER({Student ID}) = LOWER('${formattedId}')`,
+              `OR(SEARCH('${studentId}', {Student ID}), SEARCH('${formattedId}', {Student ID}))`
+          ];
+
+          let studentRecords = [];
+          for (const formula of formulas) {
+              console.log("Trying formula:", formula);
+              studentRecords = await base('tblDl10LdUIb0kiWr').select({
+                  filterByFormula: formula
+              }).firstPage();
+              
+              if (studentRecords.length > 0) {
+                  console.log("Found student with formula:", formula);
+                  break;
+              }
+          }
+
+          console.log("Full Airtable response:", JSON.stringify({
+              recordsFound: studentRecords.length,
+              records: studentRecords.map(record => ({
+                  id: record.id,
+                  fields: record.fields
+              }))
+          }, null, 2));
 
           console.log("Airtable response:", {
               recordsFound: studentRecords.length,
@@ -168,7 +196,7 @@ export const subscribeStudents = (callback) => {
           const studentRecord = studentRecords[0];
   
           // Update the student record
-          const updatedStudentRecord = await base('Students').update([
+          const updatedStudentRecord = await base('tblDl10LdUIb0kiWr').update([
               {
                   id: studentRecord.id,
                   fields: {

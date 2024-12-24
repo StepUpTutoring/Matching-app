@@ -133,7 +133,7 @@ const PersonTable = ({
       },
       filterVariant: key === 'liveScan' ? 'select' : key === 'Status' ? 'multi-select' : 'text',
       filterSelectOptions: key === 'liveScan' ? ['Yes', 'No'] : 
-        key === 'Status' ? ['Ready to Tutor', 'Needs Rematch', 'Needs a Match'] : undefined,
+        key === 'Status' ? ['Ready to Tutor', 'Needs Rematch', 'Needs a Match', 'Matched'] : undefined,
       filterFn: key === 'Status' ? 
         (row, _columnId, filterValue) => {
           // Handle both string and array filter values
@@ -200,7 +200,7 @@ const PersonTable = ({
       columnFilters: [
         {
           id: 'Status',
-          value: type === 'tutor' ? ['Ready to Tutor', 'Needs Rematch'] : ['Needs a Match', 'Needs Rematch'],
+          value: type === 'tutor' ? ['Ready to Tutor', 'Needs Rematch', 'Matched'] : ['Needs a Match', 'Needs Rematch'],
         },
       ],
     },

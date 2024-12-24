@@ -271,21 +271,6 @@ const TutorStudentMatchingApp = () => {
               isLoading={isLoading}
               matchesCount={matches.length}
             />
-
-            <div className="mb-8">
-              <h2 className="text-2xl font-medium text-gray-900 mb-4">
-                Tutors
-              </h2>
-              <PersonTable
-                people={unmatchedTutors}
-                type="tutor"
-                onSelect={handlePersonSelect}
-                selectedPerson={selectedTutor}
-                otherSelectedPerson={selectedStudent}
-                calculateDetailedOverlap={calculateDetailedOverlap}
-              />
-            </div>
-
             <div className="mb-8">
               <h2 className="text-2xl font-medium text-gray-900 mb-4">
                 Students
@@ -296,6 +281,19 @@ const TutorStudentMatchingApp = () => {
                 onSelect={handlePersonSelect}
                 selectedPerson={selectedStudent}
                 otherSelectedPerson={selectedTutor}
+                calculateDetailedOverlap={calculateDetailedOverlap}
+              />
+            </div>
+            <div className="mb-8">
+              <h2 className="text-2xl font-medium text-gray-900 mb-4">
+                Tutors
+              </h2>
+              <PersonTable
+                people={unmatchedTutors}
+                type="tutor"
+                onSelect={handlePersonSelect}
+                selectedPerson={selectedTutor}
+                otherSelectedPerson={selectedStudent}
                 calculateDetailedOverlap={calculateDetailedOverlap}
               />
             </div>
