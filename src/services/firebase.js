@@ -30,39 +30,80 @@ const db = getFirestore(app)
 const functions = getFunctions(app)
 
 const processPersonData = (data) => {
+    // Only include essential fields and fields with values
     const processedData = {
       id: data.id,
       name: `${data['First Name']} ${data['Last Name']}`,
+      Status: data.Status,
       availability: data.Availability ? data.Availability.split(', ') : [],
       language: data.Language || (data['Does tutor speak Spanish?'] === "I don't speak any other languages" ? "English" : "Spanish"),
       liveScan: data['Background Check'] === "Live Scan" ? "Yes" : "No",
-      waitingDays: data['Days waiting for a match'] || calculateWaitingDays(data['Applied Date']),
-      // Include all other fields
-      ...Object.keys(data).reduce((acc, key) => {
-        if (!['id', 'First Name', 'Last Name', 'Availability', 'Language', 'Background Check', 'Days waiting for a match'].includes(key)) {
-          acc[key] = data[key];
-        }
-        return acc;
-      }, {})
+      waitingDays: data['Days waiting for a match'] || calculateWaitingDays(data['Applied Date'])
     };
 
-  // Add specific fields for students
+  // Add specific fields for students if they have values
   if (data['Student ID']) {
-    processedData.studentId = data['Student ID'];
-    processedData.guardianName = `${data['Guardian First Name']} ${data['Guardian Last Name']}`;
-    processedData.guardianPhone = data["Guardian's Phone"];
-    processedData.schoolText = data['School text'];
-    processedData.districtText = data['District Text'];
-    processedData.programType = data['Program Type'];
+    const studentFields = {
+      studentId: data['Student ID'],
+      firstName: data['First Name'],
+      lastName: data['Last Name'],
+      grade: data['Grade'],
+      subjects: data['Subjects'] && data['Subject'],
+      guardianName: data['Guardian First Name'] && data['Guardian Last Name'] ? 
+        `${data['Guardian First Name']} ${data['Guardian Last Name']}` : null,
+      guardianPhone: data["Guardian's Phone"],
+      schoolText: data['School text'],
+      programType: data['Program Type'],
+      // Additional fields
+      appliedDate: data['Applied Date'],
+      backgroundCheck: data['Background Check'],
+      districtText: data['District Text'],
+      tutorPreferences: data['Do you have any preferences for the tutor your student will be matched with?'],
+      firstMatchedDate: data['First Matched Date'],
+      gender: data['Gender'],
+      guardianEmail: data["Guardian's Email"],
+      language: data['Language'],
+      lastStatusChange: data['Last Status Change'],
+      studentLanguage: data['Student Language']
+    };
+
+    // Only add fields that have values
+    Object.entries(studentFields).forEach(([key, value]) => {
+      if (value !== null && value !== undefined && value !== '') {
+        processedData[key] = value;
+      }
+    });
   }
 
-  // Add specific fields for tutors
+  // Add specific fields for tutors if they have values
   if (data['Tutor ID']) {
-    processedData.tutorId = data['Tutor ID'];
-    processedData.linkedinBio = data['Linkedin Resume Short Bio'];
-    processedData.numStudentsToMatch = data['Number of students to match'];
-    processedData.totalDesiredStudents = data['Total Desired Students'];
-    processedData.typeOfTutor = data['type of tutor'];
+    const tutorFields = {
+      tutorId: data['Tutor ID'],
+      backgroundCheck: data['Background Check'],
+      collegeInfo: data['College University and Graduation Year'],
+      gender: data['Gender'],
+      daysWaitingForMatch: data['Days waiting for a match'],
+      speaksSpanish: data['Does tutor speak Spanish?'],
+      email: data['Email'],
+      firstName: data['First Name'],
+      lastName: data['Last Name'],
+      lastMatch: data['Last match'],
+      linkedInResume: data['LinkedIn Resume Short Bio'],
+      numStudentsToMatch: data['Number of students to match'],
+      phone: data['Phone'],
+      primaryGuardian: data['Primary Guardian'],
+      availabilityUrl: data['Regenerate short url for Availability'],
+      status: data['Status'],
+      totalDesiredStudents: data['Total Desired Students'],
+      typeOfTutor: data['Type of tutor']
+    };
+
+    // Only add fields that have values
+    Object.entries(tutorFields).forEach(([key, value]) => {
+      if (value !== null && value !== undefined && value !== '') {
+        processedData[key] = value;
+      }
+    });
   }
 
   return processedData;
@@ -80,7 +121,8 @@ export const fetchTutors = async () => {
     try {
         const tutorsQuery = query(
             collection(db, 'tutors'),
-            where('Status', 'in', ['Ready to Tutor', 'Needs Rematch', 'Matched'])
+            where('Status', 'in', ['Ready to Tutor', 'Needs Rematch', 'Matched']),
+            limit(200)  // Match subscription limit
         );
         const querySnapshot = await getDocs(tutorsQuery);
         const tutors = querySnapshot.docs.map(doc => processPersonData({ id: doc.id, ...doc.data() }));
@@ -96,7 +138,8 @@ export const fetchStudents = async () => {
     try {
         const studentsQuery = query(
             collection(db, 'students'),
-            where('Status', 'in', ['Needs a Match', 'Needs Rematch'])
+            where('Status', 'in', ['Needs a Match', 'Needs Rematch']),
+            limit(100)  // Add limit to match the subscription query
         );
         const querySnapshot = await getDocs(studentsQuery);
         const students = querySnapshot.docs.map(doc => processPersonData({ id: doc.id, ...doc.data() }));
@@ -111,7 +154,8 @@ export const fetchStudents = async () => {
 export const subscribeTutors = (callback) => {
     const tutorsQuery = query(
         collection(db, 'tutors'),
-        where('Status', 'in', ['Ready to Tutor', 'Needs Rematch', 'Matched'])
+        where('Status', 'in', ['Ready to Tutor', 'Needs Rematch', 'Matched']),
+        limit(200)
     );
     return onSnapshot(tutorsQuery, (querySnapshot) => {
         const tutors = querySnapshot.docs.map(doc => processPersonData({ id: doc.id, ...doc.data() }));

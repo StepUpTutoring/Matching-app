@@ -200,7 +200,7 @@ const PersonTable = ({
       columnFilters: [
         {
           id: 'Status',
-          value: type === 'tutor' ? ['Ready to Tutor', 'Needs Rematch', 'Matched'] : ['Needs a Match', 'Needs Rematch'],
+          value: type === 'tutor' ? ['Ready to Tutor', 'Needs Rematch'] : ['Needs a Match', 'Needs Rematch'],
         },
       ],
     },
