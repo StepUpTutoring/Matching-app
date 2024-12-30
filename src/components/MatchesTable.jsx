@@ -1,7 +1,12 @@
 import React from 'react';
 import { calculateDetailedOverlap } from '../utils/matchingUtils';
 
-const MatchesTable = ({ matches, onUnpair, onOpenModal, onMatch }) => {
+// Spinner component
+const Spinner = () => (
+  <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
+);
+
+const MatchesTable = ({ matches, onUnpair, onOpenModal, onMatch, loadingMatch }) => {
   const getProposedMeetings = (student, tutor) => {
     const { proposedMeetings } = calculateDetailedOverlap(student, tutor);
     return proposedMeetings || [];
@@ -60,9 +65,17 @@ const MatchesTable = ({ matches, onUnpair, onOpenModal, onMatch }) => {
                       e.stopPropagation();
                       onMatch(match);
                     }}
-                    className="px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors"
+                    disabled={loadingMatch === `${match.student.id}-${match.tutor.id}`}
+                    className="px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px] flex items-center justify-center space-x-1"
                   >
-                    Match
+                    {loadingMatch === `${match.student.id}-${match.tutor.id}` ? (
+                      <>
+                        <Spinner />
+                        <span>...</span>
+                      </>
+                    ) : (
+                      'Match'
+                    )}
                   </button>
                 </td>
               </tr>

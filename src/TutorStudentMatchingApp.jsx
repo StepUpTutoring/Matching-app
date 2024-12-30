@@ -35,9 +35,37 @@ const TutorStudentMatchingApp = () => {
     language: false,
     liveScan: false,
   });
+  const [tableFilters, setTableFilters] = useState({
+    tutor: [],
+    student: []
+  });
+
+  const applyTableFilters = (people, filters) => {
+    if (!filters || filters.length === 0) return people;
+
+    return people.filter(person => {
+      return filters.every(filter => {
+        const value = person[filter.id];
+        if (!filter.value) return true;
+        
+        if (Array.isArray(filter.value)) {
+          return filter.value.includes(value);
+        }
+        return String(value).toLowerCase().includes(String(filter.value).toLowerCase());
+      });
+    });
+  };
+
+  const handleTableFilterChange = (type, newFilters) => {
+    setTableFilters(prev => ({
+      ...prev,
+      [type]: newFilters
+    }));
+  };
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedTutor, setSelectedTutor] = useState(null);
   const [matches, setMatches] = useState([]);
+  const [loadingMatch, setLoadingMatch] = useState(null);
 
   const addLog = (message) => {
     setLogs((prevLogs) => [...prevLogs, message]);
@@ -50,58 +78,53 @@ const TutorStudentMatchingApp = () => {
     }));
   };
 
-  // Separate effect for initial data fetch
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      setIsLoading(true);
-      try {
-        const [fetchedTutors, fetchedStudents] = await Promise.all([
-          fetchTutors(),
-          fetchStudents(),
-        ]);
-        setUnmatchedTutors(fetchedTutors);
-        setUnmatchedStudents(fetchedStudents);
-        addLog("Data fetched successfully");
-      } catch (error) {
-        addLog(`Error fetching data: ${error.message}`);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchInitialData();
-  }, []);
-
-  // Separate effect for subscriptions
+  // Effect for handling subscriptions and filtering
   useEffect(() => {
     const matchedTutorIds = new Set(matches.map((m) => m.tutor.id));
     const matchedStudentIds = new Set(matches.map((m) => m.student.id));
 
     const unsubscribeTutors = subscribeTutors((newTutors) => {
-      setUnmatchedTutors(newTutors.filter((t) => !matchedTutorIds.has(t.id)));
+      const unmatched = newTutors.filter((t) => !matchedTutorIds.has(t.id));
+      // Store both filtered and unfiltered lists
+      const filtered = applyTableFilters(unmatched, tableFilters.tutor);
+      setUnmatchedTutors(filtered);
     });
 
     const unsubscribeStudents = subscribeStudents((newStudents) => {
-      setUnmatchedStudents(
-        newStudents.filter((s) => !matchedStudentIds.has(s.id))
-      );
+      const unmatched = newStudents.filter((s) => !matchedStudentIds.has(s.id));
+      // Store both filtered and unfiltered lists
+      const filtered = applyTableFilters(unmatched, tableFilters.student);
+      setUnmatchedStudents(filtered);
     });
 
     return () => {
       unsubscribeTutors();
       unsubscribeStudents();
     };
-  }, [matches]);
+  }, [matches]); // Only depend on matches since filtering is handled in callbacks
+
+  // Remove the separate effect for reapplying filters since we now handle it in the subscription
 
   const handleMatch = async (match) => {
+    setLoadingMatch(`${match.student.id}-${match.tutor.id}`);
     try {
+      console.log("Student Raw Record ID:", match.student.recordID);
+      console.log("Tutor Raw Record ID:", match.tutor.recordID);
+      
+      if (!match.student.recordID || !match.tutor.recordID) {
+        addLog("Error: Missing Raw Record ID for student or tutor");
+        return;
+      }
+
       const matchData = {
-        tutorId: match.tutor.id,
-        studentId: match.student.studentId,  // Use the Airtable Student ID
+        tutorId: match.tutor.recordID,  // Use the tutor's Raw Record ID
+        studentId: match.student.recordID,  // Use the student's Raw Record ID
         overlap: match.overlap,
         createdAt: new Date(),
         proposedTime: match.proposedTime || ''
       };
+      
+      console.log("Creating match with data:", JSON.stringify(matchData, null, 2));
       const matchId = await createMatch(matchData);
       addLog(`Match created with ID: ${matchId}`);
 
@@ -111,6 +134,8 @@ const TutorStudentMatchingApp = () => {
       setMatches((prev) => prev.filter((m) => m !== match));
     } catch (error) {
       addLog(`Error creating match: ${error.message}`);
+    } finally {
+      setLoadingMatch(null);
     }
   };
 
@@ -120,12 +145,20 @@ const TutorStudentMatchingApp = () => {
     addLog("Generating new matches");
 
     try {
+      console.log("\n=== Creating Cost Matrix ===");
       const costMatrix = unmatchedStudents.map((student) =>
         unmatchedTutors.map((tutor) => {
           if (!student || !tutor) return -Infinity;
+          
+          // Skip if either has empty availability
+          if (!tutor.availability || tutor.availability.length === 0 || !student.availability || student.availability.length === 0) {
+            return -Infinity;
+          }
+
           if (
-            (filters.language && student.language !== tutor.language) ||
-            (filters.liveScan && student.liveScan !== tutor.liveScan)
+            (filters.language && student.language === 'Spanish' && tutor.language === 'English') ||
+            (filters.liveScan && student.liveScan && !tutor.liveScan)
+
           ) {
             return -Infinity;
           }
@@ -133,11 +166,12 @@ const TutorStudentMatchingApp = () => {
             student,
             tutor,
             waitingTimeWeight,
-            tQualityWeight
+            tQualityWeight,
+            MIN_OVERLAP_THRESHOLD
           );
         })
       );
-      addLog("Cost matrix created");
+      console.log("=== Cost Matrix Created ===\n");
 
       const { assignments } = maxWeightAssign(costMatrix);
       addLog("Assignments calculated");
@@ -154,17 +188,17 @@ const TutorStudentMatchingApp = () => {
           }
           const { overlappingDays, totalOverlapHours } =
             calculateDetailedOverlap(student, tutor);
-          if (
-            overlappingDays >= MIN_OVERLAP_THRESHOLD &&
-            (!filters.language || student.language === tutor.language) &&
-            (!filters.liveScan || student.liveScan === tutor.liveScan)
-          ) {
+          if (overlappingDays >= MIN_OVERLAP_THRESHOLD) {
+            const { proposedMeetings } = calculateDetailedOverlap(student, tutor);
+            const proposedTime = proposedMeetings.length > 0 
+              ? `${proposedMeetings[0].day} ${proposedMeetings[0].time}, ${proposedMeetings[1].day} ${proposedMeetings[1].time}`
+              : '';
             newMatches.push({
               student,
               tutor,
               overlap: overlappingDays,
               totalOverlapHours,
-              proposedTime: student.proposedTime || ''
+              proposedTime
             });
           } else {
             addLog(
@@ -191,6 +225,18 @@ const TutorStudentMatchingApp = () => {
 
   const handleManualMatch = () => {
     if (selectedStudent && selectedTutor) {
+      // Check for empty availability
+      if (!selectedTutor.availability || selectedTutor.availability.length === 0 || !selectedStudent.availability || selectedStudent.availability.length === 0) {
+        addLog(`Cannot match: Empty availability - Student: ${selectedStudent.name}, Tutor: ${selectedTutor.name}`);
+        return;
+      }
+
+      // Check Live Scan compatibility when filter is enabled
+      if (filters.liveScan && !selectedTutor.liveScan && selectedStudent.liveScan) {
+        addLog(`Cannot match: Tutor does not have Live Scan but student requires it`);
+        return;
+      }
+
       const { overlappingDays, totalOverlapHours } = calculateDetailedOverlap(
         selectedStudent,
         selectedTutor
@@ -221,19 +267,19 @@ const TutorStudentMatchingApp = () => {
     }
   };
 
-  const handleUnpair = (match) => {
-    setMatches((prev) => prev.filter((m) => m !== match));
-    setUnmatchedStudents((prev) => [...prev, match.student]);
-    setUnmatchedTutors((prev) => [...prev, match.tutor]);
-    addLog(`Unpaired ${match.student.name} from ${match.tutor.name}`);
-  };
-
   const handlePersonSelect = (person, type) => {
     if (type === "student") {
       setSelectedStudent(person);
     } else {
       setSelectedTutor(person);
     }
+  };
+
+  const handleUnpair = (match) => {
+    setMatches((prev) => prev.filter((m) => m !== match));
+    setUnmatchedStudents((prev) => [...prev, match.student]);
+    setUnmatchedTutors((prev) => [...prev, match.tutor]);
+    addLog(`Unpaired ${match.student.name} from ${match.tutor.name}`);
   };
 
   const handleMatchClick = (match) => {
@@ -245,14 +291,17 @@ const TutorStudentMatchingApp = () => {
   const [selectedProposedTime, setSelectedProposedTime] = useState(null);
 
   return (
-    <div className="min-h-screen bg-gray-100 py-6 flex flex-col justify-center sm:py-12">
-      <div className="relative py-3 sm:max-w-full sm:mx-auto">
-        <div className="relative px-4 py-10 mx-8 bg-white shadow-lg sm:rounded-3xl sm:p-20">
+    <div className="min-h-screen bg-teal-800 py-6 flex flex-col justify-center sm:py-6">
+      <div className="relative py-2 sm:max-w-full sm:mx-auto">
+        <div className="relative px-6 py-10 mx-8 bg-white shadow-lg sm:rounded-3xl sm:p-12">
           <div className="max-w-full mx-auto">
-            <h1 className="text-3xl font-weight-1000 text-teal-600 font-semibold mb-8">
-              Tutor-Student Matching
+            <h1 className="text-2xl font-black text-gray-800 mb-10 text-left">
+            Matchmaking Dashboard
             </h1>
-            <FilterControls
+            
+            {/* Filters Card */}
+            <div className="bg-gray-50 rounded-xl p-6 mb-10 shadow-sm">
+              <FilterControls
               filters={filters}
               toggleFilter={toggleFilter}
               minOverlapThreshold={MIN_OVERLAP_THRESHOLD}
@@ -271,9 +320,12 @@ const TutorStudentMatchingApp = () => {
               isLoading={isLoading}
               matchesCount={matches.length}
             />
-            <div className="mb-8">
-              <h2 className="text-2xl font-medium text-gray-900 mb-4">
-                Students
+            </div>
+
+            {/* Students Card */}
+            <div className="bg-white rounded-xl p-6 mb-10 shadow-md border border-gray-100">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                <span className="bg-blue-100 text-blue-800 p-2 rounded-lg mr-3">Students</span>
               </h2>
               <PersonTable
                 people={unmatchedStudents}
@@ -282,11 +334,13 @@ const TutorStudentMatchingApp = () => {
                 selectedPerson={selectedStudent}
                 otherSelectedPerson={selectedTutor}
                 calculateDetailedOverlap={calculateDetailedOverlap}
+                onFilterChange={handleTableFilterChange}
               />
             </div>
-            <div className="mb-8">
-              <h2 className="text-2xl font-medium text-gray-900 mb-4">
-                Tutors
+            {/* Tutors Card */}
+            <div className="bg-white rounded-xl p-6 mb-10 shadow-md border border-gray-100">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                <span className="bg-green-100 text-green-800 p-2 rounded-lg mr-3">Tutors</span>
               </h2>
               <PersonTable
                 people={unmatchedTutors}
@@ -295,21 +349,30 @@ const TutorStudentMatchingApp = () => {
                 selectedPerson={selectedTutor}
                 otherSelectedPerson={selectedStudent}
                 calculateDetailedOverlap={calculateDetailedOverlap}
+                onFilterChange={handleTableFilterChange}
               />
             </div>
 
+            {/* Matches Card */}
             {matches.length > 0 && (
-              <MatchesTable
-                matches={matches}
-                onUnpair={handleUnpair}
-                onOpenModal={handleMatchClick}
-                onMatch={handleMatch}
-              />
+              <div className="bg-white rounded-xl p-6 mb-10 shadow-md border border-gray-100">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                  <span className="bg-purple-100 text-purple-800 p-2 rounded-lg mr-3">Proposed Matches</span>
+                </h2>
+                <MatchesTable
+                  matches={matches}
+                  onUnpair={handleUnpair}
+                  onOpenModal={handleMatchClick}
+                  onMatch={handleMatch}
+                  loadingMatch={loadingMatch}
+                />
+              </div>
             )}
 
-            <div className="mt-6">
-              <h2 className="text-lg font-medium text-gray-900">Debug Logs</h2>
-              <div className="mt-2 bg-gray-50 rounded-md max-w-full p-4 max-h-60 overflow-y-auto">
+            {/* Debug Logs Card */}
+            <div className="bg-gray-50 rounded-xl p-6 shadow-sm">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Debug Logs</h2>
+              <div className="bg-white rounded-lg border border-gray-200 max-w-full p-4 max-h-60 overflow-y-auto">
                 {logs.map((log, index) => (
                   <pre key={index} className="text-xs text-gray-600">
                     {log}

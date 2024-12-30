@@ -16,14 +16,32 @@ const DetailsBar = ({ student, tutor, onClose, handleManualMatch, calculateDetai
             <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Availability</th>
             <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Language</th>
             <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LiveScan</th>
+            <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Additional Info</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td className="px-3 py-2 text-sm font-medium text-gray-900">{person.name}</td>
-            <td className="px-3 py-2 text-sm text-gray-500 break-words">{person.availability?.join(', ')}</td>
-            <td className="px-3 py-2 text-sm text-gray-500">{person.language}</td>
-            <td className="px-3 py-2 text-sm text-gray-500">{person.liveScan ? 'Yes' : 'No'}</td>
+            <td className="px-3 py-2 text-sm font-medium text-gray-900 max-w-[150px] truncate">{person.name}</td>
+            <td className="px-3 py-2 text-sm text-gray-500 max-w-[250px] break-words">{person.availability?.join(', ')}</td>
+            <td className="px-3 py-2 text-sm text-gray-500 max-w-[100px] truncate">{person.language}</td>
+            <td className="px-3 py-2 text-sm text-gray-500 max-w-[100px] truncate">{person.liveScan ? 'Yes' : 'No'}</td>
+            <td className="px-3 py-2 text-sm text-gray-500 max-w-[300px]">
+              <div><span className="font-bold">Gender:</span> {person.gender}</div>
+              <div><span className="font-bold">Program Type:</span> {person.programType}</div>
+              {role === "Selected Student" ? (
+                <>
+                  <div><span className="font-bold">Grade:</span> {person.grade}</div>
+                  <div><span className="font-bold">Subjects:</span> {person.subjects}</div>
+                  <div><span className="font-bold">Preferences:</span> {person.tutorPreferences}</div>
+                </>
+              ) : (
+                <>
+                  <div><span className="font-bold">T-Quality:</span> {person.TQuality}</div>
+                  <div><span className="font-bold">Number of Students:</span> {person.numberOfStudents}</div>
+                  <div><span className="font-bold">Assigned Meetings:</span> {person.assignedMeetings}</div>
+                </>
+              )}
+            </td>
           </tr>
         </tbody>
       </table>

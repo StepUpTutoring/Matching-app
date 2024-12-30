@@ -36,6 +36,8 @@ const RecommendedMatches = ({
       .slice(0, 3);
   }, [selectedPerson, otherPersons, waitingTimeWeight, tQualityWeight, MIN_OVERLAP_THRESHOLD]);
 
+  console.log('recommended matches', recommendedMatches)
+
   if (!selectedPerson || recommendedMatches.length === 0) {
     return null;
   }
@@ -49,7 +51,7 @@ const RecommendedMatches = ({
         Recommended Matches ({recommendedMatches.length})
         <span className="float-right">{isOpen ? '▲' : '▼'}</span>
       </button>
-      {isOpen && (
+      {isOpen && recommendedMatches && (
         <PersonTable
           people={recommendedMatches.map(match => match.person)}
           type={type === 'student' ? 'tutor' : 'student'}
@@ -57,6 +59,8 @@ const RecommendedMatches = ({
           selectedPerson={selectedPerson}
           otherSelectedPerson={selectedPerson}
           calculateDetailedOverlap={calculateDetailedOverlap}
+          isRecommendedMatches={true}
+          key={isOpen ? 'open' : 'closed'} // Force re-render when opened
         />
       )}
     </div>

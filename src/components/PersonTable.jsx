@@ -11,6 +11,8 @@ const PersonTable = ({
   selectedPerson,
   otherSelectedPerson,
   calculateDetailedOverlap,
+  onFilterChange,
+  isRecommendedMatches,
 }) => {
   const flattenObject = (obj, prefix = '') => {
     return Object.keys(obj).reduce((acc, k) => {
@@ -33,15 +35,27 @@ const PersonTable = ({
     return text.substring(0, maxLength) + '...';
   };
 
-  const data = useMemo(
-    () =>
-      people.map((row) => ({
-        ...flattenObject(row),
-        liveScan: row.liveScan ? 'Yes' : 'No',
-        waitingDays: `${row.waitingDays || ''} days waiting`
-      })),
-    [people]
-  );
+  const data = isRecommendedMatches
+    ? people.map((row) => {
+        const person = row.person || row;
+        return {
+          ...flattenObject(person),
+          liveScan: person.liveScan ? 'Yes' : 'No',
+          waitingDays: `${person.waitingDays || ''} days waiting`
+        };
+      })
+    : useMemo(
+        () =>
+          people.map((row) => {
+            const person = row.person || row;
+            return {
+              ...flattenObject(person),
+              liveScan: person.liveScan ? 'Yes' : 'No',
+              waitingDays: `${person.waitingDays || ''} days waiting`
+            };
+          }),
+        [people]
+      );
 
   // Memoize overlap calculations with proper dependency tracking
   const overlapDetails = useMemo(() => {
@@ -82,10 +96,52 @@ const PersonTable = ({
       'availability',
       'language',
       'liveScan',
+      'programType',
       'waitingDays',
     ];
-    const tutorFields = ['certifications', 'experience', 'rating'];
-    const studentFields = ['grade', 'subjects', 'parentContact'];
+    const tutorFields = [
+      'assignedMeetings',
+      'numberOfStudents',
+      'gender',
+      'daysWaitingForMatch',
+      'linkedInResume',
+      'speaksSpanish',
+      'TQuality',
+      'email',
+      'tutorId',
+      'firstName',
+      'lastName',
+      'lastMatch',
+      'numStudentsToMatch',
+      'phone',
+      'primaryGuardian',
+      'collegeInfo',
+      'backgroundCheck',
+      'status',
+      'lastStatusChange',
+      'matchedStudents',
+      'totalDesiredStudents',
+      'recordID',
+    ];
+    const studentFields = [
+      'tutorPreferences',
+      'subjects',
+      'grade',
+      'appliedDate',
+      'gender',
+      'studentId',
+      'firstName',
+      'lastName',
+      'guardianName',
+      'guardianPhone',
+      'schoolText',
+      'backgroundCheck',
+      'districtText',
+      'firstMatchedDate',
+      'guardianEmail',
+      'lastStatusChange',
+      'guardianLanguage'
+    ];
 
     const priorityFields =
       type === 'tutor'
@@ -103,7 +159,9 @@ const PersonTable = ({
       minSize: key === 'availability' ? 200 : 50,
       maxSize: key === 'availability' ? 1000 : 500,
       Cell: ({ cell, row }) => {
-        if (key === 'availability') {
+        if (key === 'assignedMeetings') {
+          return cell.getValue();
+        } else if (key === 'availability') {
           const availabilityValue = cell.getValue();
           const availabilityArray = availabilityValue ? 
             (Array.isArray(availabilityValue) ? availabilityValue : [availabilityValue]).filter(Boolean) :
@@ -131,18 +189,32 @@ const PersonTable = ({
         }
         return cell.getValue();
       },
-      filterVariant: key === 'liveScan' ? 'select' : key === 'Status' ? 'multi-select' : 'text',
-      filterSelectOptions: key === 'liveScan' ? ['Yes', 'No'] : 
-        key === 'Status' ? ['Ready to Tutor', 'Needs Rematch', 'Needs a Match', 'Matched'] : undefined,
-      filterFn: key === 'Status' ? 
-        (row, _columnId, filterValue) => {
-          // Handle both string and array filter values
-          const status = row.getValue('Status');
+      filterVariant: key === 'Status' ? 'multi-select' : 'text',
+      filterSelectOptions: key === 'Status' ? ['Ready to Tutor', 'Needs Rematch', 'Needs a Match', 'Matched'] : undefined,
+      filterFn: (row, columnId, filterValue) => {
+        if (!filterValue) return true;
+        
+        const cellValue = row.getValue(columnId);
+        if (cellValue === null || cellValue === undefined) return false;
+        
+        // Handle different filter types
+        if (key === 'Status') {
           return Array.isArray(filterValue) 
-            ? filterValue.includes(status)
-            : filterValue === status;
-        } : undefined,
+            ? filterValue.includes(cellValue)
+            : filterValue === cellValue;
+        } else {
+          // For text fields, do case-insensitive contains
+          const stringValue = String(cellValue).toLowerCase();
+          const filterString = String(filterValue).toLowerCase();
+          return stringValue.includes(filterString);
+        }
+      },
     });
+
+    // Ensure priority fields are always included even if some records don't have them
+    const columnsToShow = type === 'tutor' 
+      ? [...commonFields, ...tutorFields]
+      : [...commonFields, ...studentFields];
 
     return [
       {
@@ -168,11 +240,10 @@ const PersonTable = ({
           </button>
         ),
       },
-      ...priorityFields
-        .filter((field) => allKeys.includes(field))
-        .map(createColumn),
+      
+      ...columnsToShow.map(createColumn),
       ...allKeys
-        .filter((key) => !priorityFields.includes(key) && key !== 'id')
+        .filter((key) => !columnsToShow.includes(key) && key !== 'id')
         .map((key) => ({
           ...createColumn(key),
           hidden: true,
@@ -186,18 +257,26 @@ const PersonTable = ({
     overlapDetails
   ]);
 
-  const table = useMaterialReactTable({
+  const tableOptions = {
     columns,
     data,
+    onColumnFiltersChange: (updater) => {
+      const newFilters = typeof updater === 'function' ? updater(table.getState().columnFilters) : updater;
+      onFilterChange?.(type, newFilters);
+    },
     initialState: {
+      density: 'compact',
       showColumnFilters: true,
+      pagination: {
+        pageSize: 15,
+      },
       columnVisibility: columns.reduce((acc, column) => {
         if (column.hidden) {
           acc[column.accessorKey] = false;
         }
         return acc;
       }, {}),
-      columnFilters: [
+      columnFilters: isRecommendedMatches ? [] : [
         {
           id: 'Status',
           value: type === 'tutor' ? ['Ready to Tutor', 'Needs Rematch'] : ['Needs a Match', 'Needs Rematch'],
@@ -226,9 +305,20 @@ const PersonTable = ({
       },
     },
     muiTablePaginationProps: {
-      rowsPerPageOptions: [50, 100],
+      rowsPerPageOptions: [15, 50, 100],
     },
-  });
+    defaultDisplayRows: 15,
+  };
+
+  // For recommended matches, add specific options
+  if (isRecommendedMatches) {
+    tableOptions.enableColumnFilters = false;
+    tableOptions.enableGlobalFilter = false;
+    tableOptions.enablePagination = false;
+    tableOptions.enableSorting = false;
+  }
+
+  const table = useMaterialReactTable(tableOptions);
 
   return <MaterialReactTable table={table} />;
 };
