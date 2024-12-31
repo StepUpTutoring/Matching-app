@@ -167,14 +167,6 @@ const processPersonData = (data) => {
     const normalizedAvailability = normalizeArray(rawAvailability);
     const filteredAvailability = filterAvailableSlots(normalizedAvailability, assignedMeetings);
     
-    console.log('Tutor availability processing:', {
-      tutorId: data['Tutor ID'],
-      rawAvailability,
-      normalizedAvailability,
-      assignedMeetings,
-      filteredAvailability
-    });
-
     const tutorFields = {
       rawAvailability,
       availability: filteredAvailability,
@@ -230,7 +222,6 @@ export const fetchTutors = async () => {
         );
         const querySnapshot = await getDocs(tutorsQuery);
         const tutors = querySnapshot.docs.map(doc => processPersonData({ id: doc.id, ...doc.data() }));
-        console.log('Processed tutors:', tutors);
         return tutors;
     } catch (error) {
         console.error("Error fetching tutors:", error);
@@ -298,17 +289,13 @@ export const createMatch = async (matchData) => {
             "Status": "Matched",
             "Assigned Meeting Slots": matchData.proposedTime || '',
         };
-        
-        console.log("Update Fields:", JSON.stringify(updateFields, null, 2));
-        
+                
         // Update the student record directly using the Raw Record ID
         const updateData = [{
             "id": studentId,
             "fields": updateFields
         }];
-        
-        console.log("Update Data:", JSON.stringify(updateData, null, 2));
-        
+                
         // Update Airtable and both Firebase documents
         const [updatedStudentRecord] = await Promise.all([
             base('tblDl10LdUIb0kiWr').update(updateData),
@@ -364,7 +351,6 @@ export const createMatch = async (matchData) => {
                 })
         ]);
 
-        console.log("Match created for student:", updatedStudentRecord[0].id);
         return updatedStudentRecord[0].id;
       } catch (error) {
           console.error("Error creating match:", error);
@@ -378,9 +364,13 @@ export async function loginWithGoogle() {
         const { user } = await signInWithPopup(auth, provider)
         return { uid: user.uid, displayName: user.displayName }
     } catch (error) {
-        if (error.code !== 'auth/cancelled-popup-request') {
-            console.error(error)
+        // Silently handle expected popup closures
+        if (error.code === 'auth/popup-closed-by-user' || 
+            error.code === 'auth/cancelled-popup-request') {
+            return null
         }
+        // Log unexpected errors
+        console.error('Unexpected auth error:', error)
         return null
     }
 }

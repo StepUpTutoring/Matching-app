@@ -9,21 +9,25 @@ const AuthProvider = (props) => {
 
   const login = async () => {
     const user = await loginWithGoogle()
-    if (!user) {
-      // TODO: Handle failed login
-    }
-
-    setUser(user)
-  }
-
-  const auth = getAuth()
-  onAuthStateChanged(auth, (user) => {
     if (user) {
       setUser(user)
-    } else {
-      setUser(null)
     }
-  })
+    // No need to handle failed login - it's already handled in loginWithGoogle
+  }
+
+  React.useEffect(() => {
+    const auth = getAuth()
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUser(user)
+      } else {
+        setUser(null)
+      }
+    })
+    
+    // Cleanup subscription on unmount
+    return () => unsubscribe()
+  }, [])
 
   const value = { user, login, logout }
 

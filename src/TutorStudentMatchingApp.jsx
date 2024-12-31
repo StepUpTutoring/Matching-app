@@ -32,8 +32,8 @@ const TutorStudentMatchingApp = () => {
   const [logs, setLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [filters, setFilters] = useState({
-    language: false,
-    liveScan: false,
+    language: true,
+    liveScan: true,
   });
   const [tableFilters, setTableFilters] = useState({
     tutor: [],

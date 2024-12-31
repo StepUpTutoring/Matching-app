@@ -260,10 +260,8 @@ const PersonTable = ({
   const tableOptions = {
     columns,
     data,
-    onColumnFiltersChange: (updater) => {
-      const newFilters = typeof updater === 'function' ? updater(table.getState().columnFilters) : updater;
-      onFilterChange?.(type, newFilters);
-    },
+    enableFilters: true,
+    enableColumnFilters: true,
     initialState: {
       density: 'compact',
       showColumnFilters: true,

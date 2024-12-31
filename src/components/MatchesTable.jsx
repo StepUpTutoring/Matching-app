@@ -51,32 +51,34 @@ const MatchesTable = ({ matches, onUnpair, onOpenModal, onMatch, loadingMatch })
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onUnpair(match);
-                    }}
-                    className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors mr-2"
-                  >
-                    Unpair
-                  </button>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMatch(match);
-                    }}
-                    disabled={loadingMatch === `${match.student.id}-${match.tutor.id}`}
-                    className="px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px] flex items-center justify-center space-x-1"
-                  >
-                    {loadingMatch === `${match.student.id}-${match.tutor.id}` ? (
-                      <>
-                        <Spinner />
-                        <span>...</span>
-                      </>
-                    ) : (
-                      'Match'
-                    )}
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUnpair(match);
+                      }}
+                      className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                    >
+                      Unpair
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMatch(match);
+                      }}
+                      disabled={loadingMatch === `${match.student.id}-${match.tutor.id}`}
+                      className="px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px] flex items-center justify-center space-x-1"
+                    >
+                      {loadingMatch === `${match.student.id}-${match.tutor.id}` ? (
+                        <>
+                          <Spinner />
+                          <span>...</span>
+                        </>
+                      ) : (
+                        'Match'
+                      )}
+                    </button>
+                  </div>
                 </td>
               </tr>
             );
