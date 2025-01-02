@@ -17,8 +17,17 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files from the dist directory
-app.use(express.static('dist'));
+// Serve static files from the dist directory with proper MIME types
+app.use(express.static('dist', {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    }
+    if (path.endsWith('.mjs')) {
+      res.setHeader('Content-Type', 'text/javascript');
+    }
+  }
+}));
 
 // Handle all routes by serving index.html
 app.get('*', (req, res) => {

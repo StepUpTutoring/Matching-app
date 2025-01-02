@@ -1,18 +1,25 @@
 import React from 'react'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
-import { loginWithGoogle, logout } from '../services/firebase'
+import { loginWithGoogle, loginWithPassword, logout } from '../services/firebase'
 
 const AuthContext = React.createContext()
 
 const AuthProvider = (props) => {
   const [user, setUser] = React.useState(null)
 
-  const login = async () => {
+  const loginGoogle = async () => {
     const user = await loginWithGoogle()
     if (user) {
       setUser(user)
     }
-    // No need to handle failed login - it's already handled in loginWithGoogle
+  }
+
+  const loginPassword = async (email, password) => {
+    const user = await loginWithPassword(email, password)
+    if (user) {
+      setUser(user)
+    }
+    return user !== null
   }
 
   React.useEffect(() => {
@@ -29,7 +36,7 @@ const AuthProvider = (props) => {
     return () => unsubscribe()
   }, [])
 
-  const value = { user, login, logout }
+  const value = { user, loginGoogle, loginPassword, logout }
 
   return <AuthContext.Provider value={value} {...props} />
 }

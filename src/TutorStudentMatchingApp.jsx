@@ -85,14 +85,12 @@ const TutorStudentMatchingApp = () => {
 
     const unsubscribeTutors = subscribeTutors((newTutors) => {
       const unmatched = newTutors.filter((t) => !matchedTutorIds.has(t.id));
-      // Store both filtered and unfiltered lists
       const filtered = applyTableFilters(unmatched, tableFilters.tutor);
       setUnmatchedTutors(filtered);
     });
 
     const unsubscribeStudents = subscribeStudents((newStudents) => {
       const unmatched = newStudents.filter((s) => !matchedStudentIds.has(s.id));
-      // Store both filtered and unfiltered lists
       const filtered = applyTableFilters(unmatched, tableFilters.student);
       setUnmatchedStudents(filtered);
     });
@@ -101,7 +99,7 @@ const TutorStudentMatchingApp = () => {
       unsubscribeTutors();
       unsubscribeStudents();
     };
-  }, [matches]); // Only depend on matches since filtering is handled in callbacks
+  }, [matches, tableFilters]); // Include tableFilters in dependencies
 
   // Remove the separate effect for reapplying filters since we now handle it in the subscription
 
@@ -400,7 +398,15 @@ const TutorStudentMatchingApp = () => {
           <RecommendedMatches
             style={{ zIndex: 2000 }}
             selectedPerson={selectedStudent}
-            otherPersons={unmatchedTutors}
+            otherPersons={selectedStudent.availability?.length > 0 ? 
+              unmatchedTutors.filter(tutor => 
+                tutor.availability?.length > 0 &&
+                tutor.status !== "Matched"  &&
+                !matches.some(match => match.tutor.id === tutor.id) &&
+                !(filters.language && selectedStudent.language === 'Spanish' && tutor.language === 'English') &&
+                !(filters.liveScan && selectedStudent.liveScan && !tutor.liveScan)
+              ) : []
+            }
             type="student"
             onSelect={handlePersonSelect}
             waitingTimeWeight={waitingTimeWeight}
@@ -412,7 +418,14 @@ const TutorStudentMatchingApp = () => {
           <RecommendedMatches
             style={{ zIndex: 10000 }}
             selectedPerson={selectedTutor}
-            otherPersons={unmatchedStudents}
+            otherPersons={selectedTutor.availability?.length > 0 ? 
+              unmatchedStudents.filter(student => 
+                student.availability?.length > 0 &&
+                !matches.some(match => match.student.id === student.id) &&
+                !(filters.language && student.language === 'Spanish' && selectedTutor.language === 'English') &&
+                !(filters.liveScan && student.liveScan && !selectedTutor.liveScan)
+              ) : []
+            }
             type="tutor"
             onSelect={handlePersonSelect}
             waitingTimeWeight={waitingTimeWeight}

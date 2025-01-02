@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore';
 
 import { initializeApp } from 'firebase/app'
-import { GoogleAuthProvider, signInWithPopup, getAuth } from 'firebase/auth'
+import { GoogleAuthProvider, signInWithPopup, getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, setPersistence, browserLocalPersistence } from 'firebase/auth'
 import { getFunctions } from 'firebase/functions'
 import Airtable from 'airtable';
 
@@ -110,6 +110,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 const auth = getAuth(app)
+setPersistence(auth, browserLocalPersistence)
 const db = getFirestore(app)
 const functions = getFunctions(app)
 
@@ -295,8 +296,8 @@ export const createMatch = async (matchData) => {
             "id": studentId,
             "fields": updateFields
         }];
-                
-        // Update Airtable and both Firebase documents
+
+        // Update both Airtable and Firebase
         const [updatedStudentRecord] = await Promise.all([
             base('tblDl10LdUIb0kiWr').update(updateData),
             // Update Firebase student record
@@ -352,11 +353,29 @@ export const createMatch = async (matchData) => {
         ]);
 
         return updatedStudentRecord[0].id;
-      } catch (error) {
-          console.error("Error creating match:", error);
-          throw error;
-      }
-  };
+    } catch (error) {
+        console.error("Error creating match:", error);
+        throw error;
+    }
+};
+
+export async function loginWithPassword(email, password) {
+    try {
+        // Only allow specific credentials
+        if (email === 'tutorsupport@stepuptutoring.org' && password === 'stepup123!') {
+            const { user } = await signInWithEmailAndPassword(auth, email, password);
+            return { uid: user.uid, displayName: user.email }; // Match Google login return structure
+        }
+        return null;
+    } catch (error) {
+        console.error("Login error:", error);
+        if (error.code === 'auth/invalid-persistence-type' ||
+            error.code === 'auth/persistence-error') {
+            console.error('Persistence error:', error);
+        }
+        throw error;
+    }
+}
 
 export async function loginWithGoogle() {
     try {
@@ -368,6 +387,11 @@ export async function loginWithGoogle() {
         if (error.code === 'auth/popup-closed-by-user' || 
             error.code === 'auth/cancelled-popup-request') {
             return null
+        }
+        // Handle persistence errors
+        if (error.code === 'auth/invalid-persistence-type' ||
+            error.code === 'auth/persistence-error') {
+            console.error('Persistence error:', error);
         }
         // Log unexpected errors
         console.error('Unexpected auth error:', error)

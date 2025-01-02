@@ -8,19 +8,28 @@ export default defineConfig(({ mode }) => {
   
   return {
     plugins: [react()],
+    base: './', // Use relative paths
     define: {
       // Make env variables available globally
       'process.env': env
     },
     build: {
-    outDir: 'dist',
-    assetsDir: 'assets',
-    sourcemap: true,
-    rollupOptions: {
-      output: {
-        manualChunks: undefined
+      outDir: 'dist',
+      assetsDir: 'assets',
+      sourcemap: false, // Disable sourcemaps in production
+      rollupOptions: {
+        output: {
+          manualChunks: undefined
+        }
+      },
+      // Ensure proper module format
+      target: 'esnext',
+      minify: 'terser',
+      terserOptions: {
+        format: {
+          comments: false
+        }
       }
     }
-  }
   };
 });

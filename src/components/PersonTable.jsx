@@ -3,6 +3,7 @@ import {
   MaterialReactTable,
   useMaterialReactTable,
 } from 'material-react-table';
+import { Tooltip } from '@mui/material';
 
 const PersonTable = ({
   people,
@@ -35,27 +36,37 @@ const PersonTable = ({
     return text.substring(0, maxLength) + '...';
   };
 
-  const data = isRecommendedMatches
-    ? people.map((row) => {
+  const [showNeedingStudents, setShowNeedingStudents] = React.useState(false);
+
+  const data = useMemo(() => {
+    let filteredPeople = people;
+    
+    if (type === 'tutor' && showNeedingStudents) {
+      filteredPeople = people.filter(row => {
         const person = row.person || row;
-        return {
-          ...flattenObject(person),
-          liveScan: person.liveScan ? 'Yes' : 'No',
-          waitingDays: `${person.waitingDays || ''} days waiting`
-        };
-      })
-    : useMemo(
-        () =>
-          people.map((row) => {
-            const person = row.person || row;
-            return {
-              ...flattenObject(person),
-              liveScan: person.liveScan ? 'Yes' : 'No',
-              waitingDays: `${person.waitingDays || ''} days waiting`
-            };
-          }),
-        [people]
-      );
+        const numStudents = Number(person.numStudentsToMatch);
+        return numStudents >= 1;
+      });
+    }
+
+    return isRecommendedMatches
+      ? filteredPeople.map((row) => {
+          const person = row.person || row;
+          return {
+            ...flattenObject(person),
+            liveScan: person.liveScan ? 'Yes' : 'No',
+            waitingDays: `${person.waitingDays || ''} days waiting`
+          };
+        })
+      : filteredPeople.map((row) => {
+          const person = row.person || row;
+          return {
+            ...flattenObject(person),
+            liveScan: person.liveScan ? 'Yes' : 'No',
+            waitingDays: `${person.waitingDays || ''} days waiting`
+          };
+        });
+  }, [people, type, showNeedingStudents, isRecommendedMatches]);
 
   // Memoize overlap calculations with proper dependency tracking
   const overlapDetails = useMemo(() => {
@@ -191,7 +202,7 @@ const PersonTable = ({
       },
       filterVariant: key === 'Status' ? 'multi-select' : 'text',
       filterSelectOptions: key === 'Status' ? ['Ready to Tutor', 'Needs Rematch', 'Needs a Match', 'Matched'] : undefined,
-      filterFn: (row, columnId, filterValue) => {
+      filterFn: (row, columnId, filterValue, operator) => {
         if (!filterValue) return true;
         
         const cellValue = row.getValue(columnId);
@@ -318,7 +329,24 @@ const PersonTable = ({
 
   const table = useMaterialReactTable(tableOptions);
 
-  return <MaterialReactTable table={table} />;
+  // Create a wrapper div to hold both the button (for tutors only) and the table
+  return (
+    <div>
+      {type === 'tutor' && (
+        <Tooltip title="Filter tutors by those who have Number of Students to Match greater than 0" arrow placement="right">
+          <button
+            onClick={() => setShowNeedingStudents(!showNeedingStudents)}
+            className="mb-2 px-3 py-1 text-teal-600 font-semibold rounded hover:text-teal-700 transition-colors"
+          >
+            {showNeedingStudents
+              ? 'Show All Tutors' 
+              : 'Show Tutors Needing Students (Beta)'}
+          </button>
+        </Tooltip>
+      )}
+      <MaterialReactTable table={table} />
+    </div>
+  );
 };
 
 export default PersonTable;
