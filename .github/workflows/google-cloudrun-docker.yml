@@ -27,6 +27,12 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+        
       - name: Google Auth
         id: auth
         uses: 'google-github-actions/auth@v2'
@@ -35,6 +41,9 @@ jobs:
 
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          export_default_credentials: true
 
       - name: Deploy to App Engine
         run: gcloud app deploy app.yaml --quiet
