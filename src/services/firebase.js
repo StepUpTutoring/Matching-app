@@ -252,25 +252,55 @@ export const subscribeTutors = (callback) => {
         collection(db, 'tutors'),
         where('Status', 'in', ['Ready to Tutor', 'Needs Rematch', 'Matched']),
     );
-    return onSnapshot(tutorsQuery, (querySnapshot) => {
-        const tutors = querySnapshot.docs.map(doc => processPersonData({ id: doc.id, ...doc.data() }));
-        callback(tutors);
-    });
+    
+    try {
+        return onSnapshot(tutorsQuery, 
+            (querySnapshot) => {
+                try {
+                    const tutors = querySnapshot.docs.map(doc => processPersonData({ id: doc.id, ...doc.data() }));
+                    callback(tutors);
+                } catch (error) {
+                    console.error("Error processing tutor data:", error);
+                }
+            },
+            (error) => {
+                console.error("Error in tutor subscription:", error);
+            }
+        );
+    } catch (error) {
+        console.error("Error setting up tutor subscription:", error);
+        return () => {}; // Return empty cleanup function
+    }
 };
 
 export const subscribeStudents = (callback) => {
     const studentsQuery = query(
-      collection(db, 'students'),
-      limit(100),
-      where('Status', 'in', ['Needs a Match', 'Needs Rematch'])
+        collection(db, 'students'),
+        limit(100),
+        where('Status', 'in', ['Needs a Match', 'Needs Rematch'])
     );
-    return onSnapshot(studentsQuery, (querySnapshot) => {
-      const students = querySnapshot.docs.map((doc) =>
-        processPersonData({ id: doc.id, ...doc.data() })
-      );
-      callback(students);
-    });
-  };
+    
+    try {
+        return onSnapshot(studentsQuery, 
+            (querySnapshot) => {
+                try {
+                    const students = querySnapshot.docs.map((doc) =>
+                        processPersonData({ id: doc.id, ...doc.data() })
+                    );
+                    callback(students);
+                } catch (error) {
+                    console.error("Error processing student data:", error);
+                }
+            },
+            (error) => {
+                console.error("Error in student subscription:", error);
+            }
+        );
+    } catch (error) {
+        console.error("Error setting up student subscription:", error);
+        return () => {}; // Return empty cleanup function
+    }
+};
   
   const base = new Airtable({apiKey: import.meta.env.VITE_AIRTABLE_PERSONAL_ACCESS_TOKEN}).base(import.meta.env.VITE_AIRTABLE_BASE_ID);
   
