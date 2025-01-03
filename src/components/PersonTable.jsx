@@ -268,65 +268,83 @@ const PersonTable = ({
     overlapDetails
   ]);
 
-  const tableOptions = {
-    columns,
-    data,
-    enableFilters: true,
-    enableColumnFilters: true,
-    initialState: {
-      density: 'compact',
-      showColumnFilters: true,
-      pagination: {
-        pageSize: 15,
+  const [columnFilters, setColumnFilters] = React.useState(
+    isRecommendedMatches ? [] : [
+      {
+        id: 'Status',
+        value: type === 'tutor' ? ['Ready to Tutor', 'Needs Rematch'] : ['Needs a Match', 'Needs Rematch'],
       },
-      columnVisibility: columns.reduce((acc, column) => {
-        if (column.hidden) {
-          acc[column.accessorKey] = false;
-        }
-        return acc;
-      }, {}),
-      columnFilters: isRecommendedMatches ? [] : [
-        {
-          id: 'Status',
-          value: type === 'tutor' ? ['Ready to Tutor', 'Needs Rematch'] : ['Needs a Match', 'Needs Rematch'],
-        },
-      ],
-    },
-    enableHiding: true,
-    enableColumnActions: true,
-    enablePagination: true,
-    enableSorting: true,
-    tableLayout: 'auto',
-    muiTableBodyCellProps: {
-      sx: {
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-      },
-    },
-    muiTableHeadCellProps: {
-      sx: {
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        maxWidth: '300px',
-      },
-    },
-    muiTablePaginationProps: {
-      rowsPerPageOptions: [15, 50, 100],
-    },
-    defaultDisplayRows: 15,
-  };
+    ]
+  );
 
-  // For recommended matches, add specific options
-  if (isRecommendedMatches) {
-    tableOptions.enableColumnFilters = false;
-    tableOptions.enableGlobalFilter = false;
-    tableOptions.enablePagination = false;
-    tableOptions.enableSorting = false;
-  }
+  // Sync column filters with parent
+  React.useEffect(() => {
+    if (!isRecommendedMatches && onFilterChange) {
+      onFilterChange(type, columnFilters);
+    }
+  }, [columnFilters, type, onFilterChange, isRecommendedMatches]);
+
+  const tableOptions = useMemo(() => {
+    const options = {
+      columns,
+      data,
+      enableFilters: true,
+      enableColumnFilters: true,
+      state: {
+        columnFilters,
+      },
+      initialState: {
+        density: 'compact',
+        showColumnFilters: true,
+        pagination: {
+          pageSize: 15,
+        },
+        columnVisibility: columns.reduce((acc, column) => {
+          if (column.hidden) {
+            acc[column.accessorKey] = false;
+          }
+          return acc;
+        }, {}),
+      },
+      onColumnFiltersChange: setColumnFilters,
+      enableHiding: true,
+      enableColumnActions: true,
+      enablePagination: true,
+      enableSorting: true,
+      tableLayout: 'auto',
+      muiTableBodyCellProps: {
+        sx: {
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        },
+      },
+      muiTableHeadCellProps: {
+        sx: {
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          maxWidth: '300px',
+        },
+      },
+      muiTablePaginationProps: {
+        rowsPerPageOptions: [15, 50, 100],
+      },
+      defaultDisplayRows: 15,
+    };
+
+    if (isRecommendedMatches) {
+      options.enableColumnFilters = false;
+      options.enableGlobalFilter = false;
+      options.enablePagination = false;
+      options.enableSorting = false;
+    }
+
+    return options;
+  }, [columns, data, columnFilters, isRecommendedMatches]);
 
   const table = useMaterialReactTable(tableOptions);
+
 
   // Create a wrapper div to hold both the button (for tutors only) and the table
   return (
