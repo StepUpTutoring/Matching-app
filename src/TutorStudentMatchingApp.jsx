@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { getAuth, signOut } from "firebase/auth";
 import { useAuth } from "./hooks/useAuth";
 import { maxWeightAssign } from "munkres-algorithm";
 import { Navigate } from "react-router-dom";
@@ -85,6 +86,15 @@ const TutorStudentMatchingApp = () => {
       ...prevFilters,
       [filterName]: !prevFilters[filterName],
     }));
+  };
+
+  const handleSignOut = () => {
+    const auth = getAuth();
+    signOut(auth).then(() => {
+      // Sign-out successful.
+    }).catch((error) => {
+      // An error happened.
+    });
   };
 
   // Effect for handling subscriptions and filtering
@@ -481,6 +491,7 @@ const TutorStudentMatchingApp = () => {
           />
         )}
       </DetailsBar>
+      {/* <button onClick={handleSignOut} className="absolute top-0 right-0 m-4 bg-red-500 text-white px-4 py-2 rounded-lg">Sign Out</button> */}
     </div>
   );
 };
