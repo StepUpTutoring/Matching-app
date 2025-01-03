@@ -40,28 +40,37 @@ const TutorStudentMatchingApp = () => {
     student: []
   });
 
-  const applyTableFilters = (people, filters) => {
-    if (!filters || filters.length === 0) return people;
+  const applyTableFilters = React.useCallback((people, columnFilters) => {
+    if (!columnFilters || columnFilters.length === 0) return people;
 
     return people.filter(person => {
-      return filters.every(filter => {
+      return columnFilters.every(filter => {
         const value = person[filter.id];
         if (!filter.value) return true;
         
+        // Handle multi-select filters (like Status)
         if (Array.isArray(filter.value)) {
           return filter.value.includes(value);
         }
-        return String(value).toLowerCase().includes(String(filter.value).toLowerCase());
+        
+        // Handle text filters with case-insensitive contains
+        if (typeof filter.value === 'string') {
+          return value && String(value).toLowerCase().includes(filter.value.toLowerCase());
+        }
+        
+        // Handle other filter types if needed
+        return false;
       });
     });
-  };
+  }, []);
 
-  const handleTableFilterChange = (type, newFilters) => {
+  const handleTableFilterChange = React.useCallback((type, newFilters) => {
     setTableFilters(prev => ({
       ...prev,
       [type]: newFilters
     }));
-  };
+  }, []);
+
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedTutor, setSelectedTutor] = useState(null);
   const [matches, setMatches] = useState([]);
@@ -80,28 +89,67 @@ const TutorStudentMatchingApp = () => {
 
   // Effect for handling subscriptions and filtering
   useEffect(() => {
+    let mounted = true;
+    const tutorsRef = { current: [] };
+    const studentsRef = { current: [] };
+    
     const matchedTutorIds = new Set(matches.map((m) => m.tutor.id));
     const matchedStudentIds = new Set(matches.map((m) => m.student.id));
 
-    const unsubscribeTutors = subscribeTutors((newTutors) => {
-      const unmatched = newTutors.filter((t) => !matchedTutorIds.has(t.id));
-      const filtered = applyTableFilters(unmatched, tableFilters.tutor);
-      setUnmatchedTutors(filtered);
-    });
+    const handleTutorUpdate = (newTutors) => {
+      if (!mounted) return;
+      try {
+        tutorsRef.current = newTutors.filter((t) => !matchedTutorIds.has(t.id));
+        const filtered = applyTableFilters(tutorsRef.current, tableFilters.tutor);
+        setUnmatchedTutors(filtered);
+      } catch (error) {
+        console.error('Error updating tutors:', error);
+      }
+    };
 
-    const unsubscribeStudents = subscribeStudents((newStudents) => {
-      const unmatched = newStudents.filter((s) => !matchedStudentIds.has(s.id));
-      const filtered = applyTableFilters(unmatched, tableFilters.student);
-      setUnmatchedStudents(filtered);
-    });
+    const handleStudentUpdate = (newStudents) => {
+      if (!mounted) return;
+      try {
+        studentsRef.current = newStudents.filter((s) => !matchedStudentIds.has(s.id));
+        const filtered = applyTableFilters(studentsRef.current, tableFilters.student);
+        setUnmatchedStudents(filtered);
+      } catch (error) {
+        console.error('Error updating students:', error);
+      }
+    };
+
+    let unsubscribeTutors;
+    let unsubscribeStudents;
+
+    const setupSubscriptions = async () => {
+      try {
+        unsubscribeTutors = subscribeTutors(handleTutorUpdate);
+        unsubscribeStudents = subscribeStudents(handleStudentUpdate);
+      } catch (error) {
+        console.error('Error setting up subscriptions:', error);
+      }
+    };
+
+    setupSubscriptions();
 
     return () => {
-      unsubscribeTutors();
-      unsubscribeStudents();
+      mounted = false;
+      if (unsubscribeTutors) unsubscribeTutors();
+      if (unsubscribeStudents) unsubscribeStudents();
     };
-  }, [matches, tableFilters]); // Include tableFilters in dependencies
+  }, [matches, tableFilters, applyTableFilters]);
 
-  // Remove the separate effect for reapplying filters since we now handle it in the subscription
+  // Effect to reapply filters when they change
+  useEffect(() => {
+    if (tableFilters.tutor.length > 0) {
+      const filtered = applyTableFilters(unmatchedTutors, tableFilters.tutor);
+      setUnmatchedTutors(filtered);
+    }
+    if (tableFilters.student.length > 0) {
+      const filtered = applyTableFilters(unmatchedStudents, tableFilters.student);
+      setUnmatchedStudents(filtered);
+    }
+  }, [tableFilters, applyTableFilters]);
 
   const handleMatch = async (match) => {
     setLoadingMatch(`${match.student.id}-${match.tutor.id}`);
@@ -156,7 +204,6 @@ const TutorStudentMatchingApp = () => {
           if (
             (filters.language && student.language === 'Spanish' && tutor.language === 'English') ||
             (filters.liveScan && student.liveScan && !tutor.liveScan)
-
           ) {
             return -Infinity;
           }
