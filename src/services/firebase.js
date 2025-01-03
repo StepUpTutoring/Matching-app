@@ -408,6 +408,7 @@ export async function loginWithPassword(email, password) {
 }
 
 export async function loginWithGoogle() {
+  console.log("Logging in with Google");
     try {
         const provider = new GoogleAuthProvider()
         const { user } = await signInWithPopup(auth, provider)
