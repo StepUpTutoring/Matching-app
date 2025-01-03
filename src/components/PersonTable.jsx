@@ -339,7 +339,6 @@ const PersonTable = ({
       options.enablePagination = false;
       options.enableSorting = false;
     }
-
     return options;
   }, [columns, data, columnFilters, isRecommendedMatches]);
 
