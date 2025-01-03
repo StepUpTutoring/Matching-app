@@ -294,7 +294,6 @@ const PersonTable = ({
     },
     enableHiding: true,
     enableColumnActions: true,
-    enableColumnFilters: true,
     enablePagination: true,
     enableSorting: true,
     tableLayout: 'auto',
