@@ -3,6 +3,7 @@ import {
   MaterialReactTable,
   useMaterialReactTable,
 } from 'material-react-table';
+import { Tooltip } from '@mui/material';
 
 const PersonTable = ({
   people,
@@ -11,6 +12,8 @@ const PersonTable = ({
   selectedPerson,
   otherSelectedPerson,
   calculateDetailedOverlap,
+  onFilterChange,
+  isRecommendedMatches,
 }) => {
   const flattenObject = (obj, prefix = '') => {
     return Object.keys(obj).reduce((acc, k) => {
@@ -33,25 +36,65 @@ const PersonTable = ({
     return text.substring(0, maxLength) + '...';
   };
 
-  const data = useMemo(
-    () =>
-      people.map((row) => ({
-        ...flattenObject(row),
-        liveScan: row.liveScan ? 'Yes' : 'No',
-        waitingDays: `${row.waitingDays || ''} days waiting`
-      })),
-    [people]
-  );
+  const [showNeedingStudents, setShowNeedingStudents] = React.useState(false);
 
-  // Memoize overlap calculations
+  const data = useMemo(() => {
+    let filteredPeople = people;
+    
+    if (type === 'tutor' && showNeedingStudents) {
+      filteredPeople = people.filter(row => {
+        const person = row.person || row;
+        const numStudents = Number(person.numStudentsToMatch);
+        return numStudents >= 1;
+      });
+    }
+
+    return isRecommendedMatches
+      ? filteredPeople.map((row) => {
+          const person = row.person || row;
+          return {
+            ...flattenObject(person),
+            liveScan: person.liveScan ? 'Yes' : 'No',
+            waitingDays: `${person.waitingDays || ''} days waiting`
+          };
+        })
+      : filteredPeople.map((row) => {
+          const person = row.person || row;
+          return {
+            ...flattenObject(person),
+            liveScan: person.liveScan ? 'Yes' : 'No',
+            waitingDays: `${person.waitingDays || ''} days waiting`
+          };
+        });
+  }, [people, type, showNeedingStudents, isRecommendedMatches]);
+
+  // Memoize overlap calculations with proper dependency tracking
   const overlapDetails = useMemo(() => {
     if (!otherSelectedPerson) return null;
+    
+    // Create a stable key for each person's availability
+    const getAvailabilityKey = (person) => {
+      const avail = Array.isArray(person.availability) ? person.availability : [person.availability];
+      return avail.filter(Boolean).sort().join('|');
+    };
+    
+    // Calculate overlaps only if we have valid data
     const results = {};
     people.forEach(person => {
-      results[person.id] = calculateDetailedOverlap(person, otherSelectedPerson);
+      if (person && person.id && person.availability) {
+        results[person.id] = calculateDetailedOverlap(person, otherSelectedPerson);
+      }
     });
+    
     return results;
-  }, [people, otherSelectedPerson, calculateDetailedOverlap]);
+  }, [
+    // Only depend on the specific properties we need
+    people.map(p => p.id).join(','),
+    people.map(p => Array.isArray(p.availability) ? p.availability.join(',') : p.availability).join('|'),
+    otherSelectedPerson?.id,
+    otherSelectedPerson?.availability,
+    calculateDetailedOverlap
+  ]);
 
   const columns = useMemo(() => {
     const allKeys = Array.from(
@@ -60,13 +103,56 @@ const PersonTable = ({
 
     const commonFields = [
       'name',
+      'Status',
       'availability',
       'language',
       'liveScan',
+      'programType',
       'waitingDays',
     ];
-    const tutorFields = ['certifications', 'experience', 'rating'];
-    const studentFields = ['grade', 'subjects', 'parentContact'];
+    const tutorFields = [
+      'assignedMeetings',
+      'numberOfStudents',
+      'gender',
+      'daysWaitingForMatch',
+      'linkedInResume',
+      'speaksSpanish',
+      'TQuality',
+      'email',
+      'tutorId',
+      'firstName',
+      'lastName',
+      'lastMatch',
+      'numStudentsToMatch',
+      'phone',
+      'primaryGuardian',
+      'collegeInfo',
+      'backgroundCheck',
+      'status',
+      'lastStatusChange',
+      'matchedStudents',
+      'totalDesiredStudents',
+      'recordID',
+    ];
+    const studentFields = [
+      'tutorPreferences',
+      'subjects',
+      'grade',
+      'appliedDate',
+      'gender',
+      'studentId',
+      'firstName',
+      'lastName',
+      'guardianName',
+      'guardianPhone',
+      'schoolText',
+      'backgroundCheck',
+      'districtText',
+      'firstMatchedDate',
+      'guardianEmail',
+      'lastStatusChange',
+      'guardianLanguage'
+    ];
 
     const priorityFields =
       type === 'tutor'
@@ -84,11 +170,13 @@ const PersonTable = ({
       minSize: key === 'availability' ? 200 : 50,
       maxSize: key === 'availability' ? 1000 : 500,
       Cell: ({ cell, row }) => {
-        if (key === 'availability') {
+        if (key === 'assignedMeetings') {
+          return cell.getValue();
+        } else if (key === 'availability') {
           const availabilityValue = cell.getValue();
-          const availabilityArray = Array.isArray(availabilityValue)
-            ? availabilityValue
-            : [availabilityValue];
+          const availabilityArray = availabilityValue ? 
+            (Array.isArray(availabilityValue) ? availabilityValue : [availabilityValue]).filter(Boolean) :
+            [];
 
           const overlap = overlapDetails?.[row.original.id];
           
@@ -112,9 +200,32 @@ const PersonTable = ({
         }
         return cell.getValue();
       },
-      filterVariant: key === 'liveScan' ? 'select' : 'text',
-      filterSelectOptions: key === 'liveScan' ? ['Yes', 'No'] : undefined,
+      filterVariant: key === 'Status' ? 'multi-select' : 'text',
+      filterSelectOptions: key === 'Status' ? ['Ready to Tutor', 'Needs Rematch', 'Needs a Match', 'Matched'] : undefined,
+      filterFn: (row, columnId, filterValue, operator) => {
+        if (!filterValue) return true;
+        
+        const cellValue = row.getValue(columnId);
+        if (cellValue === null || cellValue === undefined) return false;
+        
+        // Handle different filter types
+        if (key === 'Status') {
+          return Array.isArray(filterValue) 
+            ? filterValue.includes(cellValue)
+            : filterValue === cellValue;
+        } else {
+          // For text fields, do case-insensitive contains
+          const stringValue = String(cellValue).toLowerCase();
+          const filterString = String(filterValue).toLowerCase();
+          return stringValue.includes(filterString);
+        }
+      },
     });
+
+    // Ensure priority fields are always included even if some records don't have them
+    const columnsToShow = type === 'tutor' 
+      ? [...commonFields, ...tutorFields]
+      : [...commonFields, ...studentFields];
 
     return [
       {
@@ -140,11 +251,10 @@ const PersonTable = ({
           </button>
         ),
       },
-      ...priorityFields
-        .filter((field) => allKeys.includes(field))
-        .map(createColumn),
+      
+      ...columnsToShow.map(createColumn),
       ...allKeys
-        .filter((key) => !priorityFields.includes(key) && key !== 'id')
+        .filter((key) => !columnsToShow.includes(key) && key !== 'id')
         .map((key) => ({
           ...createColumn(key),
           hidden: true,
@@ -158,21 +268,32 @@ const PersonTable = ({
     overlapDetails
   ]);
 
-  const table = useMaterialReactTable({
+  const tableOptions = {
     columns,
     data,
+    enableFilters: true,
+    enableColumnFilters: true,
     initialState: {
+      density: 'compact',
       showColumnFilters: true,
+      pagination: {
+        pageSize: 15,
+      },
       columnVisibility: columns.reduce((acc, column) => {
         if (column.hidden) {
           acc[column.accessorKey] = false;
         }
         return acc;
       }, {}),
+      columnFilters: isRecommendedMatches ? [] : [
+        {
+          id: 'Status',
+          value: type === 'tutor' ? ['Ready to Tutor', 'Needs Rematch'] : ['Needs a Match', 'Needs Rematch'],
+        },
+      ],
     },
     enableHiding: true,
     enableColumnActions: true,
-    enableColumnFilters: true,
     enablePagination: true,
     enableSorting: true,
     tableLayout: 'auto',
@@ -192,11 +313,39 @@ const PersonTable = ({
       },
     },
     muiTablePaginationProps: {
-      rowsPerPageOptions: [50, 100],
+      rowsPerPageOptions: [15, 50, 100],
     },
-  });
+    defaultDisplayRows: 15,
+  };
 
-  return <MaterialReactTable table={table} />;
+  // For recommended matches, add specific options
+  if (isRecommendedMatches) {
+    tableOptions.enableColumnFilters = false;
+    tableOptions.enableGlobalFilter = false;
+    tableOptions.enablePagination = false;
+    tableOptions.enableSorting = false;
+  }
+
+  const table = useMaterialReactTable(tableOptions);
+
+  // Create a wrapper div to hold both the button (for tutors only) and the table
+  return (
+    <div>
+      {type === 'tutor' && (
+        <Tooltip title="Filter tutors by those who have Number of Students to Match greater than 0" arrow placement="right">
+          <button
+            onClick={() => setShowNeedingStudents(!showNeedingStudents)}
+            className="mb-2 px-3 py-1 text-teal-600 font-semibold rounded hover:text-teal-700 transition-colors"
+          >
+            {showNeedingStudents
+              ? 'Show All Tutors' 
+              : 'Show Tutors Needing Students (Beta)'}
+          </button>
+        </Tooltip>
+      )}
+      <MaterialReactTable table={table} />
+    </div>
+  );
 };
 
 export default PersonTable;

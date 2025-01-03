@@ -1,179 +1,168 @@
-export const calculateDetailedOverlap = (person1, person2) => {
-  if (!person1 || !person2 || !person1.availability || !person2.availability) {
-    return { overlappingSlots: [], totalOverlapHours: 0, overlappingDays: 0 };
-  }
-
-  const overlappingSlots = [];
-  let totalOverlapHours = 0;
-  const overlappingDays = new Set();
-
-  const parseTime = (time) => {
+// Time utilities
+const timeUtils = {
+  parseTime: (time) => {
     if (!time) return 0;
     const [hours, minutes] = time.split(':').map(Number);
     return hours * 60 + minutes;
-  };
+  },
 
-  const formatTime = (minutes) => {
+  formatTime: (minutes) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-  };
+  },
 
-  const availability1 = Array.isArray(person1.availability) ? person1.availability : [person1.availability];
-  const availability2 = Array.isArray(person2.availability) ? person2.availability : [person2.availability];
-
-  availability1.forEach(slot1 => {
-    if (!slot1) return;
-    const [day1, timeRange1] = slot1.split(' ');
-    if (!timeRange1) return;
-    const [start1, end1] = timeRange1.split('-').map(parseTime);
-
-    availability2.forEach(slot2 => {
-      if (!slot2) return;
-      const [day2, timeRange2] = slot2.split(' ');
-      if (!timeRange2) return;
-      const [start2, end2] = timeRange2.split('-').map(parseTime);
-
-      if (day1 === day2) {
-        const overlapStart = Math.max(start1, start2);
-        const overlapEnd = Math.min(end1, end2);
-        const overlapMinutes = Math.max(0, overlapEnd - overlapStart);
-
-        if (overlapMinutes >= 60) {
-          overlappingDays.add(day1);
-          const overlapTimeRange = `${formatTime(overlapStart)}-${formatTime(overlapEnd)}`;
-          overlappingSlots.push({ 
-            day: day1, 
-            time: overlapTimeRange, 
-            overlap: overlapMinutes 
-          });
-          totalOverlapHours += overlapMinutes / 60;
-        }
-      }
-    });
-  });
-
-  // Generate proposed meeting times
-  const proposedMeetings = generateProposedMeetings(overlappingSlots);
-
-  return { 
-    overlappingSlots, 
-    totalOverlapHours: Math.round(totalOverlapHours * 10) / 10,
-    overlappingDays: overlappingDays.size,
-    proposedMeetings
-  };
+  addHours: (time, hoursToAdd) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes + (hoursToAdd * 60);
+    const newHours = Math.floor(totalMinutes / 60);
+    const newMinutes = totalMinutes % 60;
+    return `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
+  }
 };
 
-const generateProposedMeetings = (overlappingSlots) => {
-  if (overlappingSlots.length < 2) {
-    return [];
-  }
+// Meeting slot utilities
+const slotUtils = {
+  parseSlot: (slot) => {
+    if (!slot) return null;
+    const [day, timeRange] = slot.split(' ');
+    if (!timeRange) return null;
+    const [start, end] = timeRange.split('-').map(timeUtils.parseTime);
+    return { day, start, end };
+  },
 
-  // Sort slots by day of week to ensure proper spacing
-  const dayOrder = {
+  formatSlot: (day, start, end) => 
+    `${day} ${timeUtils.formatTime(start)}-${timeUtils.formatTime(end)}`,
+
+  hasMinimumDuration: (start, end, minMinutes = 60) => 
+    (end - start) >= minMinutes
+};
+
+// Constants
+const CONSTANTS = {
+  MIN_SLOT_DURATION: 60,
+  MAX_WAITING_DAYS: 30,
+  AVG_WAITING_DAYS: 7,
+  MAX_SCORE_POINTS: 3,
+  DAY_ORDER: {
     'Monday': 0,
     'Tuesday': 1,
     'Wednesday': 2,
     'Thursday': 3,
     'Friday': 4
-  };
-
-  const sortedSlots = [...overlappingSlots].sort((a, b) => 
-    dayOrder[a.day] - dayOrder[b.day]
-  );
-
-  // Try to find slots at least one day apart
-  let firstSlot = null;
-  let secondSlot = null;
-
-  for (let i = 0; i < sortedSlots.length; i++) {
-    if (!firstSlot) {
-      firstSlot = sortedSlots[i];
-      continue;
-    }
-
-    // Check if this slot is at least one day apart from the first slot
-    if (Math.abs(dayOrder[sortedSlots[i].day] - dayOrder[firstSlot.day]) > 1) {
-      secondSlot = sortedSlots[i];
-      break;
-    }
   }
-
-  // If we couldn't find slots more than one day apart, take the first two available slots
-  if (!secondSlot && sortedSlots.length >= 2) {
-    firstSlot = sortedSlots[0];
-    secondSlot = sortedSlots[1];
-  }
-
-  if (!firstSlot || !secondSlot) {
-    return [];
-  }
-
-  // For each slot, propose a meeting time at the start of the overlap period
-  const proposedMeetings = [
-    {
-      day: firstSlot.day,
-      time: firstSlot.time.split('-')[0]  // Take the start time of the overlap
-    },
-    {
-      day: secondSlot.day,
-      time: secondSlot.time.split('-')[0]  // Take the start time of the overlap
-    }
-  ];
-
-  return proposedMeetings;
 };
 
-export const calculateMatrixValue = (person1, person2, waitingTimeWeight) => {
-  if (!person1 || !person2) return 0;
+const findOverlappingSlots = (slots1, slots2) => {
+  const overlappingSlots = [];
+  let totalOverlapHours = 0;
+  const overlappingDays = new Set();
 
-  const { overlappingDays, totalOverlapHours } = calculateDetailedOverlap(person1, person2);
-  const remainingWeight = 1 - waitingTimeWeight;
+  slots1.forEach(slot1 => {
+    const parsed1 = slotUtils.parseSlot(slot1);
+    if (!parsed1) return;
+
+    slots2.forEach(slot2 => {
+      const parsed2 = slotUtils.parseSlot(slot2);
+      if (!parsed2 || parsed1.day !== parsed2.day) return;
+
+      const overlapStart = Math.max(parsed1.start, parsed2.start);
+      const overlapEnd = Math.min(parsed1.end, parsed2.end);
+      const overlapMinutes = Math.max(0, overlapEnd - overlapStart);
+
+      if (overlapMinutes >= CONSTANTS.MIN_SLOT_DURATION) {
+        overlappingDays.add(parsed1.day);
+        overlappingSlots.push({
+          day: parsed1.day,
+          time: `${timeUtils.formatTime(overlapStart)}-${timeUtils.formatTime(overlapEnd)}`,
+          overlap: overlapMinutes
+        });
+        totalOverlapHours += overlapMinutes / 60;
+      }
+    });
+  });
+
+  return {
+    overlappingSlots,
+    totalOverlapHours: Math.round(totalOverlapHours * 10) / 10,
+    overlappingDays: overlappingDays.size
+  };
+};
+
+const generateProposedMeetings = (overlappingSlots) => {
+  if (overlappingSlots.length < 2) return [];
+
+  const sortedSlots = [...overlappingSlots].sort((a, b) => 
+    CONSTANTS.DAY_ORDER[a.day] - CONSTANTS.DAY_ORDER[b.day]
+  );
+
+  // Find slots at least one day apart
+  let firstSlot = sortedSlots[0];
+  let secondSlot = sortedSlots.find(slot => 
+    Math.abs(CONSTANTS.DAY_ORDER[slot.day] - CONSTANTS.DAY_ORDER[firstSlot.day]) > 1
+  ) || sortedSlots[1];
+
+  if (!firstSlot || !secondSlot) return [];
+
+  return [firstSlot, secondSlot].map(slot => ({
+    day: slot.day,
+    time: `${slot.time.split('-')[0]}-${timeUtils.addHours(slot.time.split('-')[0], 1)}`
+  }));
+};
+
+export const calculateDetailedOverlap = (person1, person2) => {
+  if (!person1 || !person2 || !person1.availability || !person2.availability) {
+    return { overlappingSlots: [], totalOverlapHours: 0, overlappingDays: 0 };
+  }
+
+  // Availability is already filtered for tutors in firebase.js
+  const availability1 = person1.availability;
+  const availability2 = person2.availability;
+
+  const overlap = findOverlappingSlots(availability1, availability2);
+  const proposedMeetings = generateProposedMeetings(overlap.overlappingSlots);
+
+  return { ...overlap, proposedMeetings };
+};
+
+const calculateScores = (person1, person2, overlappingDays, totalOverlapHours, weights) => {
+  const { waitingTimeWeight, tQualityWeight } = weights;
+  const remainingWeight = 1 - waitingTimeWeight - tQualityWeight;
+  
+  // Calculate overlap scores
   const daysScore = overlappingDays * (remainingWeight / 2);
   const hoursScore = (totalOverlapHours / 5) * (remainingWeight / 2);
   
-  const maxWaitingDays = 30; // Assume 30 days is the maximum waiting time
-  const waitingScore = ((person1.waitingDays || 0) + (person2.waitingDays || 0)) / (2 * maxWaitingDays) * waitingTimeWeight;
+  // Calculate waiting score
+  const avgWaitingTime = ((person1.waitingDays || 0) + (person2.waitingDays || 0)) / 2;
+  const normalizedWaitingScore = Math.min(avgWaitingTime / CONSTANTS.MAX_WAITING_DAYS, 1) * CONSTANTS.MAX_SCORE_POINTS;
+  const waitingScore = normalizedWaitingScore * waitingTimeWeight;
   
-  return daysScore + hoursScore + waitingScore;
+  // Calculate quality score
+  const tQuality = person2.TQuality || 0;
+  const normalizedTQualityScore = (tQuality / 100) * CONSTANTS.MAX_SCORE_POINTS;
+  const tQualityScore = normalizedTQualityScore * tQualityWeight;
+  
+  return {
+    daysScore,
+    hoursScore,
+    waitingScore,
+    tQualityScore,
+    total: daysScore + hoursScore + waitingScore + tQualityScore
+  };
 };
 
-export const generateMockData = (AVAILABILITY_SLOTS) => {
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  const languages = ['English', 'Spanish'];
+export const calculateMatrixValue = (person1, person2, waitingTimeWeight, tQualityWeight = 0, minOverlapThreshold = 2) => {
+  if (!person1 || !person2) return 0;
+
+  const { overlappingDays, totalOverlapHours } = calculateDetailedOverlap(person1, person2);
   
-  const generateTimeRange = () => {
-    const startHour = Math.floor(Math.random() * 12) + 8; // 8 AM to 7 PM
-    const duration = Math.floor(Math.random() * 3) + 2; // 2 to 4 hours
-    const endHour = Math.min(startHour + duration, 20); // Cap at 8 PM
-    const minutes = Math.random() > 0.5 ? '30' : '00';
-    return `${startHour}:${minutes}-${endHour}:${minutes}`;
-  };
-
-  const generateAvailability = () => {
-    const availability = new Set();
-    while (availability.size < AVAILABILITY_SLOTS) {
-      const day = days[Math.floor(Math.random() * days.length)];
-      const timeRange = generateTimeRange();
-      availability.add(`${day} ${timeRange}`);
-    }
-    return Array.from(availability);
-  };
-
-  const generatePerson = (name) => ({
-    id: `${name.toLowerCase().replace(' ', '_')}`,
-    name: name,
-    availability: generateAvailability(),
-    language: languages[Math.floor(Math.random() * languages.length)],
-    liveScan: Math.random() < 0.9,
-    waitingDays: Math.floor(Math.random() * 30) // Random number of waiting days (0-29)
+  if (overlappingDays < minOverlapThreshold) return -1000;
+  
+  const scores = calculateScores(person1, person2, overlappingDays, totalOverlapHours, {
+    waitingTimeWeight,
+    tQualityWeight
   });
-  
-  const studentNames = ["Daniel", "Alex", "Emma", "Olivia", "Ethan", "Sophia", "Liam", "Ava", "Joe", "Justin"];
-  const tutorNames = ["Jack", "Sarah", "Michael", "Emily", "David", "Jessica", "Justice", "George", "Jane", "Haripriya"];
 
-  return {
-    students: studentNames.map(name => generatePerson(name)),
-    tutors: tutorNames.map(name => generatePerson(name)),
-  };
+  return scores.total;
 };

@@ -8,12 +8,10 @@ env_variables:
   VITE_MESSAGING_SENDER_ID: "1056884601547"
   VITE_APP_ID: "1:1056884601547:web:784205ff4bf214b3f8214e"
   VITE_MEASUREMENT_ID: "G-QGBMWFZZRP"
-  VITE_AIRTABLE_PERSONAL_ACCESS_TOKEN: "patuXDiKgLUqAn6Dz"
+  VITE_AIRTABLE_PERSONAL_ACCESS_TOKEN: "patBmlFFW6ZzABLFy"
   VITE_AIRTABLE_BASE_ID: "appk1SzoRcgno7XQT"
+entrypoint: node server.js
 handlers:
-- url: /(.*)
-  static_files: dist/\1
-  upload: dist/(.*)
 - url: /.*
-  static_files: dist/index.html
-  upload: dist/index.html
+  secure: always
+  script: auto

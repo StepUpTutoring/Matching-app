@@ -1,7 +1,12 @@
 import React from 'react';
 import { calculateDetailedOverlap } from '../utils/matchingUtils';
 
-const MatchesTable = ({ matches, onUnpair, onOpenModal }) => {
+// Spinner component
+const Spinner = () => (
+  <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]" />
+);
+
+const MatchesTable = ({ matches, onUnpair, onOpenModal, onMatch, loadingMatch }) => {
   const getProposedMeetings = (student, tutor) => {
     const { proposedMeetings } = calculateDetailedOverlap(student, tutor);
     return proposedMeetings || [];
@@ -46,21 +51,34 @@ const MatchesTable = ({ matches, onUnpair, onOpenModal }) => {
                   )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onUnpair(match);
-                    }}
-                    className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors mr-2"
-                  >
-                    Unpair
-                  </button>
-                  <button 
-                    className="px-2 py-1 bg-gray-300 text-gray-700 rounded cursor-not-allowed"
-                    disabled
-                  >
-                    Match
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onUnpair(match);
+                      }}
+                      className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                    >
+                      Unpair
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMatch(match);
+                      }}
+                      disabled={loadingMatch === `${match.student.id}-${match.tutor.id}`}
+                      className="px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px] flex items-center justify-center space-x-1"
+                    >
+                      {loadingMatch === `${match.student.id}-${match.tutor.id}` ? (
+                        <>
+                          <Spinner />
+                          <span>...</span>
+                        </>
+                      ) : (
+                        'Match'
+                      )}
+                    </button>
+                  </div>
                 </td>
               </tr>
             );
