@@ -27,6 +27,12 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+        
       - name: Google Auth
         id: auth
         uses: 'google-github-actions/auth@v2'
@@ -35,42 +41,9 @@ jobs:
 
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
-
-      - name: Authorize Docker push
-        run: gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev
-
-      - name: Build and Push Container
-        env:
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_PROJECT_ID: ${{ secrets.VITE_PROJECT_ID }}
-          VITE_STORAGE_BUCKET: ${{ secrets.VITE_STORAGE_BUCKET }}
-          VITE_MESSAGING_SENDER_ID: ${{ secrets.VITE_MESSAGING_SENDER_ID }}
-          VITE_APP_ID: ${{ secrets.VITE_APP_ID }}
-          VITE_MEASUREMENT_ID: ${{ secrets.VITE_MEASUREMENT_ID }}
-          VITE_AIRTABLE_PERSONAL_ACCESS_TOKEN: ${{ secrets.VITE_AIRTABLE_PERSONAL_ACCESS_TOKEN }}
-          VITE_AIRTABLE_BASE_ID: ${{ secrets.VITE_AIRTABLE_BASE_ID }}
-        run: |
-          docker build \
-            --build-arg VITE_FIREBASE_API_KEY=$VITE_FIREBASE_API_KEY \
-            --build-arg VITE_FIREBASE_AUTH_DOMAIN=$VITE_FIREBASE_AUTH_DOMAIN \
-            --build-arg VITE_PROJECT_ID=$VITE_PROJECT_ID \
-            --build-arg VITE_STORAGE_BUCKET=$VITE_STORAGE_BUCKET \
-            --build-arg VITE_MESSAGING_SENDER_ID=$VITE_MESSAGING_SENDER_ID \
-            --build-arg VITE_APP_ID=$VITE_APP_ID \
-            --build-arg VITE_MEASUREMENT_ID=$VITE_MEASUREMENT_ID \
-            --build-arg VITE_AIRTABLE_PERSONAL_ACCESS_TOKEN=$VITE_AIRTABLE_PERSONAL_ACCESS_TOKEN \
-            --build-arg VITE_AIRTABLE_BASE_ID=$VITE_AIRTABLE_BASE_ID \
-            -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest ./
-          docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
-
-      - name: Deploy to Cloud Run
-        id: deploy
-        uses: google-github-actions/deploy-cloudrun@v2
         with:
-          service: ${{ env.SERVICE_NAME }}
-          region: ${{ env.REGION }}
-          image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
+          project_id: ${{ env.PROJECT_ID }}
+          export_default_credentials: true
 
-      - name: Show Output
-        run: echo ${{ steps.deploy.outputs.url }}
+      - name: Deploy to App Engine
+        run: gcloud app deploy app.yaml --quiet
