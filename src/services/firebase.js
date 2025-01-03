@@ -107,7 +107,7 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_APP_ID,
   measurementId: import.meta.env.VITE_MEASUREMENT_ID,
 }
-console.log(firebaseConfig)
+
 const app = initializeApp(firebaseConfig)
 const auth = getAuth(app)
 setPersistence(auth, browserLocalPersistence)
@@ -381,6 +381,7 @@ export async function loginWithGoogle() {
     try {
         const provider = new GoogleAuthProvider()
         const { user } = await signInWithPopup(auth, provider)
+        console.log("user:", user)
         return { uid: user.uid, displayName: user.displayName }
     } catch (error) {
         // Silently handle expected popup closures
