@@ -411,8 +411,10 @@ export async function loginWithGoogle() {
   console.log("Logging in with Google");
     try {
         const provider = new GoogleAuthProvider()
-        const { user } = await signInWithPopup(auth, provider)
-        console.log("user:", user)
+        const result = await signInWithPopup(auth, provider)
+        console.log('result:', result)
+        // console.log("user:", user)
+        const { user } = result
         return { uid: user.uid, displayName: user.displayName }
     } catch (error) {
         // Silently handle expected popup closures
